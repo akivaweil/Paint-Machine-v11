@@ -28,7 +28,8 @@ bool inStateTransition = false;
 StateMachine::StateMachine() : 
     currentState(nullptr),
     nextStateOverride(nullptr), // Initialize nextStateOverride
-    _isTransitioningToPaintAllSides(false) // Initialize the new flag
+    _isTransitioningToPaintAllSides(false), // Initialize the new flag
+    _inPaintAllSidesMode(false) // Initialize the new flag
     // Initialize state instances here if using composition
     // homingState(), // Example - PnP was likely here
     // paintingSide1State(), 
@@ -157,6 +158,20 @@ void StateMachine::clearTransitioningToPaintAllSidesFlag() {
         Serial.println("StateMachine: Paint All Sides transition flag explicitly cleared.");
     }
     _isTransitioningToPaintAllSides = false;
+}
+
+// --- Paint All Sides Mode Tracking Methods ---
+void StateMachine::setInPaintAllSidesMode(bool value) {
+    _inPaintAllSidesMode = value;
+    if (value) {
+        Serial.println("StateMachine: Entering Paint All Sides mode.");
+    } else {
+        Serial.println("StateMachine: Exiting Paint All Sides mode.");
+    }
+}
+
+bool StateMachine::isInPaintAllSidesMode() const {
+    return _inPaintAllSidesMode;
 }
 // ---------------------------------------------
 

@@ -46,6 +46,7 @@ void PaintingState::enter() {
         Serial.println("PaintingState: Detected 'Paint All Sides' transition. Starting with Side 4.");
         currentStep = PS_START_SIDE4_PAINTING; // Start with Side 4
         stateMachine->clearTransitioningToPaintAllSidesFlag(); // Clear the flag as it has been handled
+        stateMachine->setInPaintAllSidesMode(true); // Set persistent mode flag
     } else if (currentStep == PS_IDLE) {
         Serial.println("PaintingState: enter() - Normal entry. Starting with Side 4.");
         currentStep = PS_START_SIDE4_PAINTING; // Start with Side 4
@@ -125,12 +126,15 @@ void PaintingState::update() {
         
         case PS_REQUEST_HOMING:
             Serial.println("PaintingState: Sequence complete. Requesting Homing State.");
-            if (stateMachine && stateMachine->getHomingState()) {
-                stateMachine->changeState(stateMachine->getHomingState());
-            } else {
-                Serial.println("ERROR: PaintingState - Cannot transition to HomingState.");
-                if (stateMachine && stateMachine->getIdleState()) {
-                   stateMachine->changeState(stateMachine->getIdleState());
+            if (stateMachine) {
+                stateMachine->setInPaintAllSidesMode(false); // Clear Paint All Sides mode
+                if (stateMachine->getHomingState()) {
+                    stateMachine->changeState(stateMachine->getHomingState());
+                } else {
+                    Serial.println("ERROR: PaintingState - Cannot transition to HomingState.");
+                    if (stateMachine->getIdleState()) {
+                       stateMachine->changeState(stateMachine->getIdleState());
+                    }
                 }
             }
             currentStep = PS_IDLE; // Reset for next entry into PaintingState
@@ -183,13 +187,7 @@ void PaintingState::onSideCompleted() {
     }
 }
 
-// Method to check if we're in "Paint All Sides" mode
-bool PaintingState::isInPaintAllSidesMode() const {
-    return (currentStep == PS_WAIT_FOR_SIDE4_COMPLETION ||
-            currentStep == PS_WAIT_FOR_SIDE3_COMPLETION ||
-            currentStep == PS_WAIT_FOR_SIDE2_COMPLETION ||
-            currentStep == PS_WAIT_FOR_SIDE1_COMPLETION);
-}
+
 
 //* ************************************************************************
 //* ************************** PAINTING STATE ****************************

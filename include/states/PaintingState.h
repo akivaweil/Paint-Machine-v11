@@ -13,9 +13,6 @@ public:
     
     // Method for side states to call when they complete
     void onSideCompleted();
-    
-    // Method to check if we're in "Paint All Sides" mode (waiting for side completion)
-    bool isInPaintAllSidesMode() const;
 
 private:
     enum PaintingSubStep {

@@ -39,6 +39,10 @@ public:
     void setTransitioningToPaintAllSides(bool value);
     bool isTransitioningToPaintAllSides() const; // No longer clears flag
     void clearTransitioningToPaintAllSidesFlag();
+    
+    // Persistent flag for tracking Paint All Sides mode during execution
+    void setInPaintAllSidesMode(bool value);
+    bool isInPaintAllSidesMode() const;
 
 private:
     State* currentState;
@@ -51,6 +55,7 @@ private:
     State* inspectTipState;
     State* nextStateOverride; // Added for sub-routine returns
     bool _isTransitioningToPaintAllSides; // Flag for paint all sides transition
+    bool _inPaintAllSidesMode; // Persistent flag to track if we're in Paint All Sides mode
 };
 
 #endif // STATEMACHINE_H 

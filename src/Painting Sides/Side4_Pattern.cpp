@@ -282,19 +282,14 @@ void Side4State::performCurrentStep() {
             
         case S4_TRANSITION_TO_HOMING:
             Serial.println("Side4State: Side 4 painting completed");
-            // Check if we have a PaintingState and if it's in "Paint All Sides" mode
-            if (stateMachine && stateMachine->getPaintingState()) {
+            // Check if we're in "Paint All Sides" mode
+            if (stateMachine && stateMachine->isInPaintAllSidesMode()) {
+                Serial.println("Side4State: Paint All Sides mode - returning to PaintingState");
                 PaintingState* paintingState = static_cast<PaintingState*>(stateMachine->getPaintingState());
-                if (paintingState->isInPaintAllSidesMode()) {
-                    Serial.println("Side4State: Paint All Sides mode - returning to PaintingState");
-                    stateMachine->changeState(paintingState);
-                    paintingState->onSideCompleted(); // Notify that this side is complete
-                } else {
-                    Serial.println("Side4State: Individual side mode - transitioning to homing");
-                    stateMachine->changeState(stateMachine->getHomingState());
-                }
+                stateMachine->changeState(paintingState);
+                paintingState->onSideCompleted(); // Notify that this side is complete
             } else {
-                Serial.println("Side4State: No PaintingState available, transitioning to homing");
+                Serial.println("Side4State: Individual side mode - transitioning to homing");
                 stateMachine->changeState(stateMachine->getHomingState());
             }
             break;
