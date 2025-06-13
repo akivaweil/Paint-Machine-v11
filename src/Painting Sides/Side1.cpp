@@ -209,9 +209,15 @@ void Side1State::performCurrentStep() {
                         Serial.println("Side1State: Paint gun OFF");
                     }
                     
+                    processWebSocketEventsFrequently();
                     delay(1);
                 }
             
+                // Ensure paint gun is OFF after movement completes
+                if (paintGunOn) {
+                    paintGun_OFF();
+                    paintGunOn = false;
+                }
                 
                 transitionToNextStep();
             }

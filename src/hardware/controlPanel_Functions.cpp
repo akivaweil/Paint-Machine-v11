@@ -128,9 +128,9 @@ bool isAnyModifierPressed() {
  */
 ActionButton getTriggeredAction() {
     // Check which action was just pressed (active high - pressed = rising edge)
-    if (g_actionLeftDebouncer.read()) return ACTION_LEFT;
-    if (g_actionCenterDebouncer.read()) return ACTION_CENTER;
-    if (g_actionRightDebouncer.read()) return ACTION_RIGHT;
+    if (g_actionLeftDebouncer.rose()) return ACTION_LEFT;
+    if (g_actionCenterDebouncer.rose()) return ACTION_CENTER;
+    if (g_actionRightDebouncer.rose()) return ACTION_RIGHT;
     return ACTION_NONE;
 }
 

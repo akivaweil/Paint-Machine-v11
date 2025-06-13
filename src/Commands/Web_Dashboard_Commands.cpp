@@ -412,11 +412,27 @@ void processWebCommand(WebSocketsServer* webSocket, uint8_t num, String commandP
         }
     }
     else if (baseCommandAction == "PAINT_GUN_ON") {
+        // Safety check: Don't allow manual paint gun control during painting operations
+        if (stateMachine && stateMachine->getCurrentState() != stateMachine->getIdleState() && 
+            stateMachine->getCurrentState() != stateMachine->getInspectTipState()) {
+            Serial.println("Manual paint gun control blocked during active painting operations");
+            webSocket->sendTXT(num, "CMD_ERROR: Manual paint gun control blocked during painting");
+            return;
+        }
+        
         // Turn on paint gun
         paintGun_ON();
         webSocket->sendTXT(num, "CMD_ACK: Paint Gun ON");
     }
     else if (baseCommandAction == "PAINT_GUN_OFF") {
+        // Safety check: Don't allow manual paint gun control during painting operations
+        if (stateMachine && stateMachine->getCurrentState() != stateMachine->getIdleState() && 
+            stateMachine->getCurrentState() != stateMachine->getInspectTipState()) {
+            Serial.println("Manual paint gun control blocked during active painting operations");
+            webSocket->sendTXT(num, "CMD_ERROR: Manual paint gun control blocked during painting");
+            return;
+        }
+        
         // Turn off paint gun
         paintGun_OFF();
         webSocket->sendTXT(num, "CMD_ACK: Paint Gun OFF");
