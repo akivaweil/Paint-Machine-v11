@@ -4,9 +4,17 @@
 #include "motors/PaintingSides.h"  // Include for side painting functions
 #include "system/StateMachine.h"   // Include for state machine functions
 #include "functionality/ManualControl.h" // Include for rotation functions
+#include "hardware/paintGun_Functions.h" // Include for paint gun functions
+#include "hardware/pressurePot_Functions.h" // Include for pressure pot functions
+#include <FastAccelStepper.h>      // Include for stepper access
+#include <AccelStepper.h>          // Include for rotation stepper
 
 // External references
 extern StateMachine* stateMachine;
+extern FastAccelStepper* stepperX;
+extern FastAccelStepper* stepperY_Left;
+extern FastAccelStepper* stepperY_Right;
+extern FastAccelStepper* stepperZ;
 
 //* ************************************************************************
 //* ************************ CONTROL PANEL FUNCTIONS *********************
@@ -238,15 +246,88 @@ void handleModifierCenterActionRight() {
 }
 
 void handleModifierRightActionLeft() {
-    Serial.println("COMBO: Modifier Right + Action Left - Reserved for future use");
+    Serial.println("COMBO: Modifier Right + Action Left - EMERGENCY STOP");
+    
+    // IMMEDIATELY stop all motors
+    Serial.println("EMERGENCY STOP: Stopping all motors immediately");
+    if (stepperX && stepperX->isRunning()) {
+        stepperX->forceStopAndNewPosition(stepperX->getCurrentPosition());
+        Serial.println("Emergency stop: X motor stopped");
+    }
+    if (stepperY_Left && stepperY_Left->isRunning()) {
+        stepperY_Left->forceStopAndNewPosition(stepperY_Left->getCurrentPosition());
+        Serial.println("Emergency stop: Y Left motor stopped");
+    }
+    if (stepperY_Right && stepperY_Right->isRunning()) {
+        stepperY_Right->forceStopAndNewPosition(stepperY_Right->getCurrentPosition());
+        Serial.println("Emergency stop: Y Right motor stopped");
+    }
+    if (stepperZ && stepperZ->isRunning()) {
+        stepperZ->forceStopAndNewPosition(stepperZ->getCurrentPosition());
+        Serial.println("Emergency stop: Z motor stopped");
+    }
+    
+    // Stop rotation motor if running
+    extern AccelStepper *rotationStepper;
+    if (rotationStepper && rotationStepper->distanceToGo() != 0) {
+        rotationStepper->stop();
+        rotationStepper->setCurrentPosition(rotationStepper->currentPosition());
+        Serial.println("Emergency stop: Rotation motor stopped");
+    }
+    
+    // Turn off paint gun and pressure pot
+    paintGun_OFF();
+    extern void PressurePot_OFF();
+    PressurePot_OFF();
+    Serial.println("Emergency stop: Paint gun and pressure pot turned off");
+    
+    // Force transition to IDLE state for safety
+    if (stateMachine) {
+        stateMachine->changeState(stateMachine->getIdleState());
+        Serial.println("Emergency stop: Forced transition to IDLE state");
+    }
 }
 
 void handleModifierRightActionCenter() {
-    Serial.println("COMBO: Modifier Right + Action Center - Reserved for future use");
+    Serial.println("COMBO: Modifier Right + Action Center - Test Paint Gun");
+    
+    // Only allow paint gun test in IDLE state for safety
+    if (stateMachine && stateMachine->getCurrentState() != stateMachine->getIdleState()) {
+        Serial.println("Paint gun test rejected: Machine must be in IDLE state");
+        return;
+    }
+    
+    Serial.println("Starting 3-second paint gun test...");
+    
+    // Turn on pressure pot first
+    extern void PressurePot_ON();
+    PressurePot_ON();
+    delay(100); // Brief delay for pressure buildup
+    
+    // Turn on paint gun for 3 seconds
+    paintGun_ON();
+    delay(3000); // 3 second test
+    paintGun_OFF();
+    
+    Serial.println("Paint gun test completed (3 seconds)");
 }
 
 void handleModifierRightActionRight() {
-    Serial.println("COMBO: Modifier Right + Action Right - Reserved for future use");
+    Serial.println("COMBO: Modifier Right + Action Right - Move to Tip Inspection Position");
+    
+    // Only allow in IDLE state for safety
+    if (stateMachine && stateMachine->getCurrentState() != stateMachine->getIdleState()) {
+        Serial.println("Tip inspection rejected: Machine must be in IDLE state");
+        return;
+    }
+    
+    // Transition to InspectTipState
+    if (stateMachine) {
+        stateMachine->changeState(stateMachine->getInspectTipState());
+        Serial.println("Transitioning to Inspect Tip state");
+    } else {
+        Serial.println("ERROR: StateMachine not available for tip inspection");
+    }
 }
 
 // Single action button handlers (no modifier pressed)
