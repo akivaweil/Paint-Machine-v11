@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include "../../include/system/StateMachine.h"
 #include "../../include/states/State.h"
+#include "../../include/states/PaintingState.h"
 #include "../../include/motors/XYZ_Movements.h"
 #include "../../include/utils/settings.h"
 #include "../../include/motors/Rotation_Motor.h"
@@ -283,8 +284,16 @@ void Side3State::performCurrentStep() {
             break;
             
         case S3_TRANSITION_TO_HOMING:
-            Serial.println("Side3State: Transitioning to homing state");
-            stateMachine->changeState(stateMachine->getHomingState());
+            Serial.println("Side3State: Side 3 painting completed, returning to PaintingState");
+            // Check if we have a PaintingState to return to
+            if (stateMachine && stateMachine->getPaintingState()) {
+                PaintingState* paintingState = static_cast<PaintingState*>(stateMachine->getPaintingState());
+                stateMachine->changeState(paintingState);
+                paintingState->onSideCompleted(); // Notify that this side is complete
+            } else {
+                Serial.println("Side3State: No PaintingState available, transitioning to homing");
+                stateMachine->changeState(stateMachine->getHomingState());
+            }
             break;
     }
 }
