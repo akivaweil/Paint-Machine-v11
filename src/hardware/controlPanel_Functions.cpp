@@ -236,55 +236,31 @@ void handleModifierCenterActionLeft() {
 }
 
 void handleModifierCenterActionCenter() {
-    Serial.println("COMBO: Modifier Center + Action Center - Rotate Tray 90° CCW");
-    handleManualRotateCounterClockwise90();
+    Serial.println("COMBO: Modifier Center + Action Center - Rotate Tray 90° CW");
+
+        handleManualRotateClockwise90();
 }
 
 void handleModifierCenterActionRight() {
-    Serial.println("COMBO: Modifier Center + Action Right - Rotate Tray 90° CW");
-    handleManualRotateClockwise90();
+    Serial.println("COMBO: Modifier Center + Action Right - Rotate Tray 90° CCW");
+    handleManualRotateCounterClockwise90();
 }
 
 void handleModifierRightActionLeft() {
-    Serial.println("COMBO: Modifier Right + Action Left - EMERGENCY STOP");
+    Serial.println("COMBO: Modifier Right + Action Left - FORCE HOME");
     
-    // IMMEDIATELY stop all motors
-    Serial.println("EMERGENCY STOP: Stopping all motors immediately");
-    if (stepperX && stepperX->isRunning()) {
-        stepperX->forceStopAndNewPosition(stepperX->getCurrentPosition());
-        Serial.println("Emergency stop: X motor stopped");
-    }
-    if (stepperY_Left && stepperY_Left->isRunning()) {
-        stepperY_Left->forceStopAndNewPosition(stepperY_Left->getCurrentPosition());
-        Serial.println("Emergency stop: Y Left motor stopped");
-    }
-    if (stepperY_Right && stepperY_Right->isRunning()) {
-        stepperY_Right->forceStopAndNewPosition(stepperY_Right->getCurrentPosition());
-        Serial.println("Emergency stop: Y Right motor stopped");
-    }
-    if (stepperZ && stepperZ->isRunning()) {
-        stepperZ->forceStopAndNewPosition(stepperZ->getCurrentPosition());
-        Serial.println("Emergency stop: Z motor stopped");
-    }
+    // Set the home command received flag - this will be checked by painting operations between movements
+    extern volatile bool homeCommandReceived;
+    homeCommandReceived = true;
     
-    // Stop rotation motor if running
-    extern AccelStepper *rotationStepper;
-    if (rotationStepper && rotationStepper->distanceToGo() != 0) {
-        rotationStepper->stop();
-        rotationStepper->setCurrentPosition(rotationStepper->currentPosition());
-        Serial.println("Emergency stop: Rotation motor stopped");
-    }
+    Serial.println("Force home command triggered - painting operations will abort at next check point");
     
-    // Turn off paint gun and pressure pot
-    paintGun_OFF();
-    extern void PressurePot_OFF();
-    PressurePot_OFF();
-    Serial.println("Emergency stop: Paint gun and pressure pot turned off");
-    
-    // Force transition to IDLE state for safety
-    if (stateMachine) {
-        stateMachine->changeState(stateMachine->getIdleState());
-        Serial.println("Emergency stop: Forced transition to IDLE state");
+    // If machine is currently idle, immediately go to homing state
+    if (stateMachine && stateMachine->getCurrentState() == stateMachine->getIdleState()) {
+        Serial.println("Machine is idle - transitioning to homing state immediately");
+        stateMachine->changeState(stateMachine->getHomingState());
+    } else {
+        Serial.println("Machine is busy - home command will be processed at next safe point");
     }
 }
 
