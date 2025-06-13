@@ -11,6 +11,7 @@
 // Let's remove these for now, includes should come from StateMachine.h directly where needed.
 
 // Machine flags
-extern volatile bool homeCommandReceived;
+extern volatile bool homeCommandReceived;        // For websocket home commands
+extern volatile bool physicalHomeButtonPressed;  // For physical control panel home button
 
 #endif // MACHINE_STATE_H 

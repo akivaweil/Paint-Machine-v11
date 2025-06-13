@@ -29,8 +29,9 @@ extern PaintingSettings paintingSettings;
 // State machine
 extern StateMachine* stateMachine;
 
-// Define the global flag previously in machine_state.cpp
-volatile bool homeCommandReceived = false;
+// Define the global flags previously in machine_state.cpp
+volatile bool homeCommandReceived = false;        // For websocket home commands
+volatile bool physicalHomeButtonPressed = false;  // For physical control panel home button
 
 //* ************************************************************************
 //* ***************************** MAIN *******************************

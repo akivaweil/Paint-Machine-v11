@@ -10,6 +10,7 @@
 #include "../../include/motors/ServoMotor.h"
 #include "../../include/web/Web_Dashboard_Commands.h"
 #include "../../include/system/StateMachine.h"
+#include "../../include/settings/pins.h" // For MODIFIER_BUTTON_RIGHT definition
 
 // External references to stepper motors
 extern FastAccelStepper *stepperX;
@@ -72,6 +73,11 @@ void paintSide2Pattern() {
     moveToXYZ(startX_steps, DEFAULT_X_SPEED, startY_steps, DEFAULT_Y_SPEED, zPos, DEFAULT_Z_SPEED);
     Serial.println("Lowered to painting Z for Side 2.");
 
+    //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+    while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+        delay(10); // Small delay to prevent excessive CPU usage
+    }
+
     long currentX = startX_steps;
     long currentY = startY_steps;
     const int num_y_sweeps = 5; // 5 Y-sweeps results in 4 X-shifts
@@ -89,10 +95,6 @@ void paintSide2Pattern() {
                 // First sweep - move to top position only
                 Serial.printf("Side 2 Pattern: Moving to top position Y=%ld without painting at fast speed\n", startY_steps);
                 moveToXYZ(currentX, DEFAULT_X_SPEED, startY_steps, DEFAULT_Y_SPEED, zPos, DEFAULT_Z_SPEED);
-                
-                if (checkForPauseCommand()) {
-                    return;
-                }
             }
             // For subsequent sweeps, X shift and Y top move are combined before this loop
             
@@ -132,12 +134,6 @@ void paintSide2Pattern() {
                 // Process WebSocket events frequently during movement
                 processWebSocketEventsFrequently();
                 
-                if (checkForPauseCommand()) {
-                    stepperY_Left->forceStop();
-                    stepperY_Right->forceStop();
-                    paintGun_OFF();
-                    return;
-                }
                 delay(1);
             }
             
@@ -183,12 +179,6 @@ void paintSide2Pattern() {
                 // Process WebSocket events frequently during movement
                 processWebSocketEventsFrequently();
                 
-                if (checkForPauseCommand()) {
-                    stepperY_Left->forceStop();
-                    stepperY_Right->forceStop();
-                    paintGun_OFF();
-                    return;
-                }
                 delay(1);
             }
             
@@ -196,24 +186,22 @@ void paintSide2Pattern() {
             currentY = finalY;
         }
 
-        if (checkForPauseCommand()) {
-            moveToXYZ(currentX, DEFAULT_X_SPEED, currentY, DEFAULT_Y_SPEED, sideZPos, DEFAULT_Z_SPEED);
-            Serial.println("Side 2 Pattern Painting ABORTED due to home command");
-            return;
-        }
-
         // Perform combined X shift and Y top move if it's not the last Y sweep
         if (i < num_y_sweeps - 1) {
+            //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+            while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+                delay(10); // Small delay to prevent excessive CPU usage
+            }
+            
             Serial.printf("Side 2 Pattern: Combined shift -X and move to top Y after sweep %d at fast speed\\\\n", i + 1);
             currentX -= shiftXDistance; // Shift in -X direction (ensure shiftXDistance is positive in settings)
             moveToXYZ(currentX, DEFAULT_X_SPEED, startY_steps, DEFAULT_Y_SPEED, zPos, DEFAULT_Z_SPEED); // Move to next X AND top Y simultaneously
-            
-            if (checkForPauseCommand()) {
-                 moveToXYZ(currentX, DEFAULT_X_SPEED, startY_steps, DEFAULT_Y_SPEED, sideZPos, DEFAULT_Z_SPEED);
-                 Serial.println("Side 2 Pattern Painting ABORTED due to home command during combined X shift and Y move");
-                 return;
-            }
         }
+    }
+
+    //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+    while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+        delay(10); // Small delay to prevent excessive CPU usage
     }
 
     //! NEW: Perform additional movements at the end of the pattern
@@ -226,10 +214,9 @@ void paintSide2Pattern() {
     moveToXYZ(endSeq_targetX1, DEFAULT_X_SPEED, currentY, DEFAULT_Y_SPEED, zPos, DEFAULT_Z_SPEED); // Keep at painting Z
     currentX = endSeq_targetX1;
 
-    if (checkForPauseCommand()) {
-        moveToXYZ(currentX, DEFAULT_X_SPEED, currentY, DEFAULT_Y_SPEED, sideZPos, DEFAULT_Z_SPEED);
-        Serial.println("Side 2 Pattern Painting ABORTED during end sequence (move 1) due to home command");
-        return;
+    //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+    while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+        delay(10); // Small delay to prevent excessive CPU usage
     }
 
     //! Set Servo Angle and Z height for final X pass
@@ -250,6 +237,11 @@ void paintSide2Pattern() {
     
     // First move Z to the final X pass Z height
     moveToXYZ(currentX, DEFAULT_X_SPEED, currentY, DEFAULT_Y_SPEED, finalXPassZPos_Side2, DEFAULT_Z_SPEED);
+
+    //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+    while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+        delay(10); // Small delay to prevent excessive CPU usage
+    }
     
     // Start continuous movement from currentX to endSeq_targetX2
     stepperX->moveTo(endSeq_targetX2);
@@ -278,13 +270,6 @@ void paintSide2Pattern() {
         // Process WebSocket events frequently during movement
         processWebSocketEventsFrequently();
         
-        if (checkForPauseCommand()) {
-            stepperX->forceStop();
-            paintGun_OFF();
-            Serial.println("Side 2 Pattern Painting ABORTED during final X sweep due to home command");
-            return;
-        }
-        
         // Small delay to prevent excessive CPU usage
         delay(1);
     }
@@ -298,15 +283,20 @@ void paintSide2Pattern() {
     paintGun_OFF();
     currentX = endSeq_targetX2;
 
-    if (checkForPauseCommand()) {
-        moveToXYZ(currentX, DEFAULT_X_SPEED, currentY, DEFAULT_Y_SPEED, sideZPos, DEFAULT_Z_SPEED);
-        Serial.println("Side 2 Pattern Painting ABORTED during end sequence (move 2) due to home command");
-        return;
+    //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+    while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+        delay(10); // Small delay to prevent excessive CPU usage
     }
+
     Serial.println("Side 2 Pattern: End sequence movements completed.");
 
     // Move Z to safe height
     moveToXYZ(currentX, DEFAULT_X_SPEED, currentY, DEFAULT_Y_SPEED, sideZPos, DEFAULT_Z_SPEED);
+
+    //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+    while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+        delay(10); // Small delay to prevent excessive CPU usage
+    }
 
     //! Move to position (1,1,0) before homing
     moveToPositionOneOneBeforeHoming();

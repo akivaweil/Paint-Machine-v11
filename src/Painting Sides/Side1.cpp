@@ -12,6 +12,7 @@
 #include "settings/pins.h"        // Keep this one
 #include "../../include/web/Web_Dashboard_Commands.h" // For checkForHomeCommand
 #include "../../include/system/StateMachine.h" // Include StateMachine header
+#include "../../include/settings/pins.h" // For MODIFIER_BUTTON_RIGHT definition
 
 // External references to stepper motors
 extern FastAccelStepper *stepperX;
@@ -58,6 +59,11 @@ bool paintSide1Pattern() {
     //! Lower to painting Z height
     moveToXYZ(startX, DEFAULT_X_SPEED, startY, DEFAULT_Y_SPEED, zPos, DEFAULT_Z_SPEED);
 
+    //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+    while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+        delay(10); // Small delay to prevent excessive CPU usage
+    }
+
     //! Execute painting pattern - continuous motion with paint gun control
     long shiftXDistance = (long)(paintingSettings.getSide1ShiftX() * STEPS_PER_INCH_XYZ);
     long xSpeed = paintingSettings.getSide1PaintingXSpeed();
@@ -101,8 +107,18 @@ bool paintSide1Pattern() {
         Serial.println("Paint gun OFF - movement complete");
     }
 
+    //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+    while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+        delay(10); // Small delay to prevent excessive CPU usage
+    }
+
     //! STEP 6: Raise to safe Z height (Was STEP 8)
     moveToXYZ(finalX, DEFAULT_X_SPEED, startY, DEFAULT_Y_SPEED, sideZPos, DEFAULT_Z_SPEED);
+
+    //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+    while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+        delay(10); // Small delay to prevent excessive CPU usage
+    }
 
     //! Move to position (1,1,0) before homing
     moveToPositionOneOneBeforeHoming();

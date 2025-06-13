@@ -1368,9 +1368,9 @@ bool checkForHomeCommand() {
   // Process any pending WebSocket events using enhanced processing
   processWebSocketEventsFrequently();
   
-  // Check if a home command was received
+  // Check if a websocket home command was received
   if (homeCommandReceived) {
-    Serial.println("HOME command received - immediately aborting all operations");
+    Serial.println("WEBSOCKET HOME command received - immediately aborting all operations");
     
     // IMMEDIATELY stop all motors
     if (stepperX->isRunning()) stepperX->forceStopAndNewPosition(stepperX->getCurrentPosition());
@@ -1380,7 +1380,27 @@ bool checkForHomeCommand() {
     
     // If we have a state machine, immediately change to homing state
     if (stateMachine) {
-      Serial.println("Changing to homing state immediately due to HOME command");
+      Serial.println("Changing to homing state immediately due to WEBSOCKET HOME command");
+      stateMachine->changeState(stateMachine->getHomingState());
+    }
+    
+    return true;
+  }
+  
+  // Also check for physical home button
+  extern volatile bool physicalHomeButtonPressed;
+  if (physicalHomeButtonPressed) {
+    Serial.println("PHYSICAL HOME button pressed - immediately aborting all operations");
+    
+    // IMMEDIATELY stop all motors
+    if (stepperX->isRunning()) stepperX->forceStopAndNewPosition(stepperX->getCurrentPosition());
+    if (stepperY_Left->isRunning()) stepperY_Left->forceStopAndNewPosition(stepperY_Left->getCurrentPosition());
+    if (stepperY_Right->isRunning()) stepperY_Right->forceStopAndNewPosition(stepperY_Right->getCurrentPosition());
+    if (stepperZ->isRunning()) stepperZ->forceStopAndNewPosition(stepperZ->getCurrentPosition());
+    
+    // If we have a state machine, immediately change to homing state
+    if (stateMachine) {
+      Serial.println("Changing to homing state immediately due to PHYSICAL HOME button");
       stateMachine->changeState(stateMachine->getHomingState());
     }
     
@@ -1391,7 +1411,7 @@ bool checkForHomeCommand() {
 }
 
 // Function to check for PAUSE command during painting operations
-// Returns true if the operation was aborted due to home command while paused
+// Returns true if the operation was aborted due to PHYSICAL home button while paused
 bool checkForPauseCommand() {
   static unsigned long lastCheckTime = 0;
   unsigned long currentTime = millis();
@@ -1406,16 +1426,17 @@ bool checkForPauseCommand() {
   // Process any pending WebSocket events first using the enhanced function
   processWebSocketEventsFrequently();
   
-  // If paused, wait in a loop until unpaused or home command received
+  // If paused, wait in a loop until unpaused or physical home button pressed
   if (isPaused) { 
     Serial.println("[DEBUG] PAUSED DETECTED. Entering wait loop.");
     while (isPaused) {
       // Continue processing WebSocket events while paused (more frequently)
       processWebSocketEventsFrequently();
       
-      // Check for home command while paused
-      if (homeCommandReceived) {
-        Serial.println("HOME command received while paused - aborting operation");
+      // Check for PHYSICAL home button while paused
+      extern volatile bool physicalHomeButtonPressed;
+      if (physicalHomeButtonPressed) {
+        Serial.println("PHYSICAL HOME button pressed while paused - aborting operation");
         isPaused = false; // Clear pause state since we're aborting
         return true; // Indicate that operation was aborted
       }
@@ -1427,8 +1448,21 @@ bool checkForPauseCommand() {
     Serial.println("\n[DEBUG] RESUMED. Exiting wait loop.");
   }
   
-  // Final check for home command even if not paused
-  return homeCommandReceived;
+  // Final check for PHYSICAL home button even if not paused
+  extern volatile bool physicalHomeButtonPressed;
+  if (physicalHomeButtonPressed) {
+    Serial.println("PHYSICAL HOME button pressed during painting - immediately stopping all motors");
+    
+    // IMMEDIATELY stop all motors
+    if (stepperX->isRunning()) stepperX->forceStopAndNewPosition(stepperX->getCurrentPosition());
+    if (stepperY_Left->isRunning()) stepperY_Left->forceStopAndNewPosition(stepperY_Left->getCurrentPosition());
+    if (stepperY_Right->isRunning()) stepperY_Right->forceStopAndNewPosition(stepperY_Right->getCurrentPosition());
+    if (stepperZ->isRunning()) stepperZ->forceStopAndNewPosition(stepperZ->getCurrentPosition());
+    
+    return true;
+  }
+  
+  return false;
 }
 
 // Function to check and restart WebSocket if needed

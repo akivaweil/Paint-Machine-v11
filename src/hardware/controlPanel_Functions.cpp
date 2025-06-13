@@ -128,9 +128,9 @@ bool isAnyModifierPressed() {
  */
 ActionButton getTriggeredAction() {
     // Check which action was just pressed (active high - pressed = rising edge)
-    if (g_actionLeftDebouncer.rose()) return ACTION_LEFT;
-    if (g_actionCenterDebouncer.rose()) return ACTION_CENTER;
-    if (g_actionRightDebouncer.rose()) return ACTION_RIGHT;
+    if (g_actionLeftDebouncer.read()) return ACTION_LEFT;
+    if (g_actionCenterDebouncer.read()) return ACTION_CENTER;
+    if (g_actionRightDebouncer.read()) return ACTION_RIGHT;
     return ACTION_NONE;
 }
 
@@ -247,20 +247,20 @@ void handleModifierCenterActionRight() {
 }
 
 void handleModifierRightActionLeft() {
-    Serial.println("COMBO: Modifier Right + Action Left - FORCE HOME");
+    Serial.println("COMBO: Modifier Right + Action Left - PHYSICAL FORCE HOME");
     
-    // Set the home command received flag - this will be checked by painting operations between movements
-    extern volatile bool homeCommandReceived;
-    homeCommandReceived = true;
+    // Set the PHYSICAL home button flag - this will be checked by painting operations between movements
+    extern volatile bool physicalHomeButtonPressed;
+    physicalHomeButtonPressed = true;
     
-    Serial.println("Force home command triggered - painting operations will abort at next check point");
+    Serial.println("Physical home button pressed - painting operations will abort at next check point");
     
     // If machine is currently idle, immediately go to homing state
     if (stateMachine && stateMachine->getCurrentState() == stateMachine->getIdleState()) {
         Serial.println("Machine is idle - transitioning to homing state immediately");
         stateMachine->changeState(stateMachine->getHomingState());
     } else {
-        Serial.println("Machine is busy - home command will be processed at next safe point");
+        Serial.println("Machine is busy - physical home command will be processed at next safe point");
     }
 }
 

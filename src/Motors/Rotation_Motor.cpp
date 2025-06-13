@@ -97,3 +97,117 @@ void setSmoothRotationMotion() {
 }
 
 // Implement other rotation-specific functions here if needed 
+
+//* ************************************************************************
+//* ****************** MANUAL ROTATION (NON-TRACKING) ********************
+//* ************************************************************************
+// !!! SPECIAL NOTE: The following functions are for MANUAL ROTATION ONLY !!!
+// !!! These functions DO NOT track position changes and should ONLY be !!!
+// !!! used for manual websocket commands. This allows operators to !!!
+// !!! manually reorient the tray without affecting automatic paint cycles. !!!
+// !!! DO NOT CHANGE THIS BEHAVIOR - it's intentional! !!!
+// !!! If you need position tracking, use rotateToAngle() instead. !!!
+
+/**
+ * Manually rotates the turntable clockwise by exactly 90 degrees
+ * WITHOUT updating the internal position tracking.
+ * This allows manual reorientation without affecting subsequent paint cycles.
+ * 
+ * !!! WARNING: This function does NOT track position changes !!!
+ * !!! Use ONLY for manual websocket commands !!!
+ */
+void manualRotateClockwise90() {
+    // Check if rotation stepper is initialized
+    if (!rotationStepper) {
+        Serial.println("ERROR: Rotation stepper not initialized!");
+        return;
+    }
+
+    Serial.println("Manual CW 90° rotation (non-tracking) - Position will NOT be updated");
+    
+    // Calculate 90 degrees in steps
+    long steps90Degrees = (long)(90.0f * STEPS_PER_DEGREE);
+    
+    // Get current position (for reference only)
+    long currentPosition = rotationStepper->currentPosition();
+    float currentAngle = (float)currentPosition / STEPS_PER_DEGREE;
+    
+    Serial.print("Current tracked position: ");
+    Serial.print(currentPosition);
+    Serial.print(" steps (");
+    Serial.print(currentAngle);
+    Serial.println(" degrees)");
+    
+    // Move 90 degrees clockwise relative to current physical position
+    // but DON'T update the stepper's internal position tracking
+    rotationStepper->move(steps90Degrees);
+    
+    // Run the stepper until it reaches the target
+    while (rotationStepper->distanceToGo() != 0) {
+        rotationStepper->run();
+        yield(); // Prevent watchdog timeout
+    }
+    
+    // Reset the stepper's internal position to what it was before the move
+    // This makes the move "invisible" to position tracking
+    rotationStepper->setCurrentPosition(currentPosition);
+    
+    Serial.println("Manual CW 90° rotation complete - Position tracking unchanged");
+    Serial.print("Tracked position remains: ");
+    Serial.print(rotationStepper->currentPosition());
+    Serial.print(" steps (");
+    Serial.print((float)rotationStepper->currentPosition() / STEPS_PER_DEGREE);
+    Serial.println(" degrees)");
+}
+
+/**
+ * Manually rotates the turntable counter-clockwise by exactly 90 degrees
+ * WITHOUT updating the internal position tracking.
+ * This allows manual reorientation without affecting subsequent paint cycles.
+ * 
+ * !!! WARNING: This function does NOT track position changes !!!
+ * !!! Use ONLY for manual websocket commands !!!
+ */
+void manualRotateCounterClockwise90() {
+    // Check if rotation stepper is initialized
+    if (!rotationStepper) {
+        Serial.println("ERROR: Rotation stepper not initialized!");
+        return;
+    }
+
+    Serial.println("Manual CCW 90° rotation (non-tracking) - Position will NOT be updated");
+    
+    // Calculate 90 degrees in steps (negative for counter-clockwise)
+    long steps90Degrees = (long)(-90.0f * STEPS_PER_DEGREE);
+    
+    // Get current position (for reference only)
+    long currentPosition = rotationStepper->currentPosition();
+    float currentAngle = (float)currentPosition / STEPS_PER_DEGREE;
+    
+    Serial.print("Current tracked position: ");
+    Serial.print(currentPosition);
+    Serial.print(" steps (");
+    Serial.print(currentAngle);
+    Serial.println(" degrees)");
+    
+    // Move 90 degrees counter-clockwise relative to current physical position
+    // but DON'T update the stepper's internal position tracking
+    rotationStepper->move(steps90Degrees);
+    
+    // Run the stepper until it reaches the target
+    while (rotationStepper->distanceToGo() != 0) {
+        rotationStepper->run();
+        yield(); // Prevent watchdog timeout
+    }
+    
+    // Reset the stepper's internal position to what it was before the move
+    // This makes the move "invisible" to position tracking
+    rotationStepper->setCurrentPosition(currentPosition);
+    
+    Serial.println("Manual CCW 90° rotation complete - Position tracking unchanged");
+    Serial.print("Tracked position remains: ");
+    Serial.print(rotationStepper->currentPosition());
+    Serial.print(" steps (");
+    Serial.print((float)rotationStepper->currentPosition() / STEPS_PER_DEGREE);
+    Serial.println(" degrees)");
+} 

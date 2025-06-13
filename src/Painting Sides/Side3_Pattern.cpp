@@ -10,6 +10,7 @@
 #include "../../include/motors/ServoMotor.h"         // For ServoMotor class
 #include "../../include/web/Web_Dashboard_Commands.h" // For checkForHomeCommand
 #include "../../include/system/StateMachine.h" // Include StateMachine header
+#include "../../include/settings/pins.h" // For MODIFIER_BUTTON_RIGHT definition
 
 // External references to stepper motors
 extern FastAccelStepper *stepperX;
@@ -123,22 +124,15 @@ void paintSide3Pattern() {
         // Process WebSocket events frequently during movement
         processWebSocketEventsFrequently();
         
-        if (checkForPauseCommand()) {
-            stepperX->forceStop();
-            paintGun_OFF();
-            Serial.println("Side 3 Pattern Painting ABORTED due to home command");
-            return;
-        }
         delay(1);
     }
     
     paintGun_OFF();
     currentX = finalX1;
 
-    if (checkForPauseCommand()) {
-        moveToXYZ(currentX, DEFAULT_X_SPEED, currentY, DEFAULT_Y_SPEED, sideZPos, DEFAULT_Z_SPEED);
-        Serial.println("Side 3 Pattern Painting ABORTED due to home command");
-        return;
+    //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+    while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+        delay(10); // Small delay to prevent excessive CPU usage
     }
 
     //! Handle web server and WebSocket communication
@@ -148,6 +142,11 @@ void paintSide3Pattern() {
     Serial.println("Side 3 Pattern: Shift Y-");
     currentY -= shiftY_steps;
     moveToXYZ(currentX, DEFAULT_X_SPEED, currentY, DEFAULT_Y_SPEED, zPos, DEFAULT_Z_SPEED);
+
+    //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+    while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+        delay(10); // Small delay to prevent excessive CPU usage
+    }
 
     // Second sweep: X+ direction with smooth motion
     Serial.println("Side 3 Pattern: Second sweep X+ with smooth paint gun control");
@@ -181,22 +180,26 @@ void paintSide3Pattern() {
         // Process WebSocket events frequently during movement
         processWebSocketEventsFrequently();
         
-        if (checkForPauseCommand()) {
-            stepperX->forceStop();
-            paintGun_OFF();
-            Serial.println("Side 3 Pattern Painting ABORTED due to home command");
-            return;
-        }
         delay(1);
     }
     
     paintGun_OFF();
     currentX = finalX2;
 
+    //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+    while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+        delay(10); // Small delay to prevent excessive CPU usage
+    }
+
     // Second shift: Y- direction
     Serial.println("Side 3 Pattern: Shift Y-");
     currentY -= shiftY_steps;
     moveToXYZ(currentX, DEFAULT_X_SPEED, currentY, DEFAULT_Y_SPEED, zPos, DEFAULT_Z_SPEED);
+
+    //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+    while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+        delay(10); // Small delay to prevent excessive CPU usage
+    }
 
     // Third sweep: X- direction with smooth motion
     Serial.println("Side 3 Pattern: Third sweep X- with smooth paint gun control");
@@ -230,22 +233,26 @@ void paintSide3Pattern() {
         // Process WebSocket events frequently during movement
         processWebSocketEventsFrequently();
         
-        if (checkForPauseCommand()) {
-            stepperX->forceStop();
-            paintGun_OFF();
-            Serial.println("Side 3 Pattern Painting ABORTED due to home command");
-            return;
-        }
         delay(1);
     }
     
     paintGun_OFF();
     currentX = finalX3;
 
+    //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+    while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+        delay(10); // Small delay to prevent excessive CPU usage
+    }
+
     // Third shift: Y- direction
     Serial.println("Side 3 Pattern: Shift Y-");
     currentY -= shiftY_steps;
     moveToXYZ(currentX, DEFAULT_X_SPEED, currentY, DEFAULT_Y_SPEED, zPos, DEFAULT_Z_SPEED);
+
+    //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+    while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+        delay(10); // Small delay to prevent excessive CPU usage
+    }
 
     // Fourth sweep: X+ direction with smooth motion
     Serial.println("Side 3 Pattern: Fourth sweep X+ with smooth paint gun control");
@@ -279,22 +286,26 @@ void paintSide3Pattern() {
         // Process WebSocket events frequently during movement
         processWebSocketEventsFrequently();
         
-        if (checkForPauseCommand()) {
-            stepperX->forceStop();
-            paintGun_OFF();
-            Serial.println("Side 3 Pattern Painting ABORTED due to home command");
-            return;
-        }
         delay(1);
     }
     
     paintGun_OFF();
     currentX = finalX4;
 
+    //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+    while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+        delay(10); // Small delay to prevent excessive CPU usage
+    }
+
     // Fourth shift: Y- direction
     Serial.println("Side 3 Pattern: Shift Y-");
     currentY -= shiftY_steps;
     moveToXYZ(currentX, DEFAULT_X_SPEED, currentY, DEFAULT_Y_SPEED, zPos, DEFAULT_Z_SPEED);
+
+    //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+    while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+        delay(10); // Small delay to prevent excessive CPU usage
+    }
 
     // Fifth sweep: X- direction (Final X painting movement) with smooth motion
     Serial.println("Side 3 Pattern: Fifth sweep X- with smooth paint gun control");
@@ -329,22 +340,15 @@ void paintSide3Pattern() {
         // Process WebSocket events frequently during movement
         processWebSocketEventsFrequently();
         
-        if (checkForPauseCommand()) {
-            stepperX->forceStop();
-            paintGun_OFF();
-            Serial.println("Side 3 Pattern Painting ABORTED due to home command");
-            return;
-        }
         delay(1);
     }
     
     paintGun_OFF();
     currentX = finalX5;
 
-    if (checkForPauseCommand()) {
-        moveToXYZ(currentX, DEFAULT_X_SPEED, currentY, DEFAULT_Y_SPEED, sideZPos, DEFAULT_Z_SPEED);
-        Serial.println("Side 3 Pattern Painting ABORTED due to home command");
-        return;
+    //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+    while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+        delay(10); // Small delay to prevent excessive CPU usage
     }
 
     //! STEP 8: Raise to safe Z height
@@ -356,5 +360,4 @@ void paintSide3Pattern() {
     //! Transition to Homing State
     Serial.println("Side 3 painting complete. Transitioning to Homing State...");
     stateMachine->changeState(stateMachine->getHomingState()); // Corrected state change call
-    // No return needed as function is void
 } 

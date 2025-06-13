@@ -30,7 +30,7 @@ void processWebSocketEventsFrequently();
 
 // Check if a home command was received during painting operations
 bool checkForHomeCommand();
-bool checkForPauseCommand();
+bool checkForPauseCommand();  // Now checks for physical home button only
 
 // Function to initialize settings and pins related to web commands
 void setupWebDashboardCommands();

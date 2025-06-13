@@ -13,6 +13,7 @@
 #include "system/StateMachine.h"
 #include "system/GlobalState.h"    // For isPaused
 #include <WebSocketsServer.h>     // For webSocket.loop()
+#include "../../include/settings/pins.h" // For MODIFIER_BUTTON_RIGHT definition
 
 extern ServoMotor myServo;
 extern FastAccelStepper *stepperX;
@@ -196,6 +197,11 @@ void paintAllSides() {
         }
         Serial.println("Reached loading bar start position.");
 
+        //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+        while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+            delay(10); // Small delay to prevent excessive CPU usage
+        }
+
         Serial.println("Starting X-axis loading bar movement for delay.");
         long target_x_end_loading_bar_steps = (long)(LOADING_BAR_X_END * STEPS_PER_INCH_XYZ);
         float duration_seconds = (float)g_interCoatDelaySeconds;
@@ -232,6 +238,11 @@ void paintAllSides() {
                 delay(1);
             }
             Serial.printf("Loading bar movement (%d) complete.\n", coat);
+        }
+
+        //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+        while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+            delay(10); // Small delay to prevent excessive CPU usage
         }
 
         Serial.printf("Finished inter-coat delay for coat %d. Ready for coat %d.\n", coat, coat + 1);

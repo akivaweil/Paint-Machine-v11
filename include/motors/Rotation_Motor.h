@@ -38,6 +38,24 @@ void rotateToAngle(float angle);
  */
 void setSmoothRotationMotion();
 
+/**
+ * @brief Manually rotates clockwise by 90 degrees WITHOUT position tracking.
+ * This function is for manual websocket commands only and allows operators
+ * to reorient the tray without affecting automatic paint cycles.
+ * 
+ * !!! WARNING: Does NOT update position tracking - use only for manual control !!!
+ */
+void manualRotateClockwise90();
+
+/**
+ * @brief Manually rotates counter-clockwise by 90 degrees WITHOUT position tracking.
+ * This function is for manual websocket commands only and allows operators
+ * to reorient the tray without affecting automatic paint cycles.
+ * 
+ * !!! WARNING: Does NOT update position tracking - use only for manual control !!!
+ */
+void manualRotateCounterClockwise90();
+
 // Add any other rotation-specific functions here if needed in the future
 // e.g., void rotateToAngle(float angle);
 // e.g., void setRotationSpeed(uint32_t speed);

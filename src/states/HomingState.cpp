@@ -70,8 +70,10 @@ HomingState::~HomingState() {
 void HomingState::enter() {
     Serial.println("Entering Homing State");
     
-    // Reset the home command flag since we're now processing it
+    // Reset both home command flags since we're now processing them
     homeCommandReceived = false;
+    extern volatile bool physicalHomeButtonPressed;
+    physicalHomeButtonPressed = false;
     
     // Prepare for homing
     delete _homingController; // Delete previous instance if any
