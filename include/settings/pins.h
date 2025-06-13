@@ -40,4 +40,13 @@
 // --- Control Input Pins ---
 #define PNP_CYCLE_SENSOR_PIN 21
 
+// --- Control Panel Button Pins ---
+#define ON_OFF_SWITCH_PIN 2        // Main power switch
+#define BUTTON_PIN_44 44           // Control button (Rx)
+#define BUTTON_PIN_1 1             // Control button  
+#define BUTTON_PIN_43 43           // Control button (Tx)
+#define BUTTON_PIN_17 17           // Control button
+#define BUTTON_PIN_7 7             // Control button
+#define BUTTON_PIN_16 16           // Control button
+
 #endif // SETTINGS_PINS_H 

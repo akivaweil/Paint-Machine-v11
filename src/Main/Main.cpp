@@ -9,6 +9,7 @@
 #include "storage/Persistence.h"
 #include "storage/PaintingSettings.h"
 #include "motors/Rotation_Motor.h" // For rotation stepper
+#include "hardware/controlPanel_Functions.h" // For control panel buttons
 
 // Include headers for functions called in loop
 #include "web/Web_Dashboard_Commands.h" // For runDashboardServer()
@@ -62,6 +63,9 @@ void loop() {
   if (stateMachine) {
     stateMachine->update();
   }
+  
+  // Update control panel buttons
+  updateControlPanelButtons();
   
   //! Handle web server and WebSocket communication
   runDashboardServer(); // Handles incoming client connections and WebSocket messages
