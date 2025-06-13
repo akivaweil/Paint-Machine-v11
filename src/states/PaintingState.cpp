@@ -183,6 +183,14 @@ void PaintingState::onSideCompleted() {
     }
 }
 
+// Method to check if we're in "Paint All Sides" mode
+bool PaintingState::isInPaintAllSidesMode() const {
+    return (currentStep == PS_WAIT_FOR_SIDE4_COMPLETION ||
+            currentStep == PS_WAIT_FOR_SIDE3_COMPLETION ||
+            currentStep == PS_WAIT_FOR_SIDE2_COMPLETION ||
+            currentStep == PS_WAIT_FOR_SIDE1_COMPLETION);
+}
+
 //* ************************************************************************
 //* ************************** PAINTING STATE ****************************
 //* ************************************************************************ 
