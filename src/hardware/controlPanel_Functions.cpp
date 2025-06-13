@@ -1,6 +1,7 @@
 #include "hardware/controlPanel_Functions.h"
 #include "hardware/GlobalDebouncers.h"
 #include "settings/pins.h"
+#include "motors/PaintingSides.h"  // Include for side painting functions
 
 //* ************************************************************************
 //* ************************ CONTROL PANEL FUNCTIONS *********************
@@ -231,23 +232,23 @@ void handleButtonCombinations() {
 //* ************************************************************************
 
 void handleModifierLeftActionLeft() {
-    Serial.println("COMBO: Modifier Left + Action Left - Home All Axes");
-    // Add your functionality here - example: trigger homing sequence
+    Serial.println("COMBO: Modifier Left + Action Left - Paint Side 1");
+    paintSide1Pattern();
 }
 
 void handleModifierLeftActionCenter() {
-    Serial.println("COMBO: Modifier Left + Action Center - Start Painting Cycle");
-    // Add your functionality here - example: start painting cycle
+    Serial.println("COMBO: Modifier Left + Action Center - Paint Side 2");
+    paintSide2Pattern();
 }
 
 void handleModifierLeftActionRight() {
-    Serial.println("COMBO: Modifier Left + Action Right - Emergency Stop");
-    // Add your functionality here - example: emergency stop
+    Serial.println("COMBO: Modifier Left + Action Right - Paint Side 3");
+    paintSide3Pattern();
 }
 
 void handleModifierCenterActionLeft() {
-    Serial.println("COMBO: Modifier Center + Action Left - Manual Move Mode");
-    // Add your functionality here - example: enter manual move mode
+    Serial.println("COMBO: Modifier Center + Action Left - Paint Side 4");
+    paintSide4Pattern();
 }
 
 void handleModifierCenterActionCenter() {
