@@ -104,9 +104,9 @@ bool isActionRightPressed() {
  */
 ModifierButton getCurrentModifier() {
     // Check which modifier is currently pressed (active low - pressed = LOW)
-    if (!g_modifierLeftDebouncer.read()) return MODIFIER_LEFT;
-    if (!g_modifierCenterDebouncer.read()) return MODIFIER_CENTER;
-    if (!g_modifierRightDebouncer.read()) return MODIFIER_RIGHT;
+    if (isModifierLeftPressed()) return MODIFIER_LEFT;
+    if (isModifierCenterPressed()) return MODIFIER_CENTER;
+    if (isModifierRightPressed()) return MODIFIER_RIGHT;
     return MODIFIER_NONE;
 }
 
