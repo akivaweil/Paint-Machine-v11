@@ -7,6 +7,7 @@
 #include "motors/XYZ_Movements.h"
 #include "utils/settings.h"
 #include <FastAccelStepper.h>
+#include <AccelStepper.h>
 #include "motors/Homing.h"
 #include "motors/Rotation_Motor.h"
 #include "system/StateMachine.h"
@@ -20,7 +21,7 @@ extern FastAccelStepper *stepperY_Right;
 extern FastAccelStepper *stepperZ;
 extern bool isPressurePot_ON;
 extern FastAccelStepperEngine engine;
-extern FastAccelStepper *rotationStepper;
+extern AccelStepper *rotationStepper;
 extern StateMachine* stateMachine;
 extern WebSocketsServer webSocket;    // For pause loop
 
@@ -261,8 +262,9 @@ void paintAllSides() {
         if (stepperX->isRunning()) stepperX->forceStopAndNewPosition(stepperX->getCurrentPosition());
         if (stepperY_Left->isRunning()) stepperY_Left->forceStopAndNewPosition(stepperY_Left->getCurrentPosition());
         if (stepperZ->isRunning()) stepperZ->forceStopAndNewPosition(stepperZ->getCurrentPosition());
-        if (rotationStepper && rotationStepper->isRunning()) {
-            rotationStepper->forceStopAndNewPosition(rotationStepper->getCurrentPosition());
+        if (rotationStepper && rotationStepper->distanceToGo() != 0) {
+            rotationStepper->stop(); // Stop the stepper
+            rotationStepper->setCurrentPosition(rotationStepper->currentPosition()); // Set current position
         }
     }
 } 

@@ -2,19 +2,22 @@
 #include "utils/settings.h"
 
 // Define the global rotation stepper pointer
-FastAccelStepper *rotationStepper = NULL;
+AccelStepper *rotationStepper = NULL;
 
 //* ************************************************************************
 //* ************************* ROTATION MOTOR *************************
 //* ************************************************************************
 
-void setupRotationMotor(FastAccelStepperEngine& engine) {
+void setupRotationMotor() {
     Serial.println("Initializing Rotation Stepper...");
-    rotationStepper = engine.stepperConnectToPin(ROTATION_STEP_PIN);
+    
+    // Create AccelStepper instance with DRIVER interface (step and direction pins)
+    rotationStepper = new AccelStepper(AccelStepper::DRIVER, ROTATION_STEP_PIN, ROTATION_DIR_PIN);
+    
     if (rotationStepper) {
-        rotationStepper->setDirectionPin(ROTATION_DIR_PIN);
-        rotationStepper->setSpeedInHz(DEFAULT_ROT_SPEED);
+        rotationStepper->setMaxSpeed(DEFAULT_ROT_SPEED);
         rotationStepper->setAcceleration(DEFAULT_ROT_ACCEL);
+        rotationStepper->setCurrentPosition(0); // Set current position as 0
         Serial.println("Rotation stepper initialized successfully.");
     } else {
         Serial.println("Failed to initialize Rotation stepper!");
@@ -34,7 +37,7 @@ void rotateToAngle(float angle) {
     }
 
     // Get current position and angle
-    long currentPosition = rotationStepper->getCurrentPosition();
+    long currentPosition = rotationStepper->currentPosition();
     float currentAngle = (float)currentPosition / STEPS_PER_DEGREE;
 
     // Calculate the difference in angle
@@ -44,36 +47,35 @@ void rotateToAngle(float angle) {
     while (deltaAngle > 180.0f) deltaAngle -= 360.0f;
     while (deltaAngle <= -180.0f) deltaAngle += 360.0f;
 
-    // Calculate the relative steps to move
-    long relativeSteps = (long)(deltaAngle * STEPS_PER_DEGREE);
+    // Calculate the target position in steps
+    long targetPosition = currentPosition + (long)(deltaAngle * STEPS_PER_DEGREE);
 
-    // Calculate the target absolute angle for logging purposes (optional, but helpful)
-    float targetAngleNormalized = currentAngle + deltaAngle;
+    // Debug output
+    Serial.print("Rotating from angle ");
+    Serial.print(currentAngle);
+    Serial.print(" to angle ");
+    Serial.print(angle);
+    Serial.print(" (delta: ");
+    Serial.print(deltaAngle);
+    Serial.print(" degrees, ");
+    Serial.print((long)(deltaAngle * STEPS_PER_DEGREE));
+    Serial.println(" steps)");
 
-    Serial.printf("Current Angle: %.2f, Target Angle: %.2f, Delta: %.2f degrees\n", currentAngle, angle, deltaAngle);
-    Serial.printf("Rotating by %ld steps (relative) to reach %.2f degrees\n", relativeSteps, targetAngleNormalized);
-
-    // Set speed and acceleration (optional, can be set once during setup if constant)
-    rotationStepper->setSpeedInHz(DEFAULT_ROT_SPEED);
-    rotationStepper->setAcceleration(DEFAULT_ROT_ACCEL); // Ensure acceleration is set
-
-    // Add stopMove() before move()
-    rotationStepper->stopMove(); 
-    Serial.println("DEBUG: Called stopMove() before rotationStepper->move()");
-
-    // Move the stepper relatively
-    rotationStepper->move(relativeSteps);
-
-    // Wait for rotation to complete
-    while (rotationStepper->isRunning()) {
-        // Yield or delay briefly to allow background tasks and prevent busy-waiting
-        delay(10); 
-    }
+    // Move to the target position
+    rotationStepper->moveTo(targetPosition);
     
-    // Recalculate final angle based on actual final position for accuracy
-    long finalPosition = rotationStepper->getCurrentPosition();
-    float finalAngle = (float)finalPosition / STEPS_PER_DEGREE;
-    Serial.printf("Rotation complete - Final Position: %ld steps (%.2f degrees)\n", finalPosition, finalAngle);
+    // Run the stepper until it reaches the target position
+    while (rotationStepper->distanceToGo() != 0) {
+        rotationStepper->run();
+        // Small delay to prevent watchdog timeout
+        delay(1);
+    }
+
+    Serial.print("Rotation completed. Current position: ");
+    Serial.print(rotationStepper->currentPosition());
+    Serial.print(" steps (");
+    Serial.print((float)rotationStepper->currentPosition() / STEPS_PER_DEGREE);
+    Serial.println(" degrees)");
 }
 
 // Implement other rotation-specific functions here if needed 

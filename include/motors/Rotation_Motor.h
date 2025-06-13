@@ -1,7 +1,7 @@
 #ifndef ROTATION_MOTOR_H
 #define ROTATION_MOTOR_H
 
-#include <FastAccelStepper.h>
+#include <AccelStepper.h>
 #include <Arduino.h>
 #include "settings.h" // Include settings to get the defines
 
@@ -17,15 +17,14 @@
 
 
 // Declare the rotation stepper motor object pointer
-extern FastAccelStepper *rotationStepper;
+extern AccelStepper *rotationStepper;
 
 /**
  * @brief Initializes the rotation stepper motor.
- * Connects the stepper to its pins using the provided engine instance.
+ * Creates the AccelStepper instance with step and direction pins.
  * Sets default speed and acceleration.
- * @param engine The FastAccelStepperEngine instance.
  */
-void setupRotationMotor(FastAccelStepperEngine& engine);
+void setupRotationMotor();
 
 /**
  * @brief Rotates to a specific angle.

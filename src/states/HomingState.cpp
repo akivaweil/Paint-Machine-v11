@@ -2,6 +2,7 @@
 #include <Arduino.h>
 // #include <Bounce2.h> // No longer needed here
 #include <FastAccelStepper.h>
+#include <AccelStepper.h>
 #include "utils/settings.h"
 // #include "system/machine_state.h" // No longer needed
 #include "system/StateMachine.h" 
@@ -26,7 +27,7 @@ extern FastAccelStepper *stepperX;
 extern FastAccelStepper *stepperY_Left;
 extern FastAccelStepper *stepperY_Right;
 extern FastAccelStepper *stepperZ;
-extern FastAccelStepper *rotationStepper; // Declared in Rotation_Motor.h
+extern AccelStepper *rotationStepper; // Declared in Rotation_Motor.h
 
 // Machine state variables
 // bool isHoming = false; // Moved to Homing class or managed internally

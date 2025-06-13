@@ -77,7 +77,7 @@ bool Homing::homeAllAxes() {
     
     //? Set rotation motor speeds (if it exists)
     if (rotationStepper) {
-        rotationStepper->setSpeedInHz(DEFAULT_ROT_SPEED / 2); //? Half speed for homing
+        rotationStepper->setMaxSpeed(DEFAULT_ROT_SPEED / 2); //? Half speed for homing
         rotationStepper->setAcceleration(DEFAULT_ROT_ACCEL / 2); //? Half acceleration for homing
     }
     
@@ -165,8 +165,9 @@ bool Homing::homeAllAxes() {
             if (!yRightHomed && _stepperY_Right->isRunning()) _stepperY_Right->forceStopAndNewPosition(_stepperY_Right->getCurrentPosition()); // Stop Y Right too
             if (!zHomed && _stepperZ->isRunning()) _stepperZ->forceStopAndNewPosition(_stepperZ->getCurrentPosition());
             // Rotation stepper is already stopped if it was homed, or forceStop if it was stuck in rotateToAngle (though unlikely with its internal timeout)
-            if (rotationStepper && rotationStepper->isRunning()) { // Check if it somehow got stuck despite blocking call
-                 rotationStepper->forceStopAndNewPosition(rotationStepper->getCurrentPosition());
+            if (rotationStepper && rotationStepper->distanceToGo() != 0) { // Check if it somehow got stuck despite blocking call
+                 rotationStepper->stop(); // Stop the stepper
+                 rotationStepper->setCurrentPosition(rotationStepper->currentPosition()); // Set current position
             }
             // setMachineState(MachineState::ERROR); // REMOVED - StateMachine handles transition
             return false;

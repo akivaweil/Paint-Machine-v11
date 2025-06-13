@@ -5,6 +5,7 @@
 #include "system/StateMachine.h"
 #include "states/State.h" // Required for state->getName()
 #include <FastAccelStepper.h> // Required for stepper->getCurrentPosition()
+#include <AccelStepper.h> // Required for rotation stepper
 #include "motors/Rotation_Motor.h" // ADDED for tray rotation
 #include "settings/motion.h" // ADDED for STEPS_PER_DEGREE
 #include <limits.h> // For LONG_MIN, INT_MIN
@@ -14,7 +15,7 @@ extern ServoMotor myServo;
 extern FastAccelStepper* stepperX;
 extern FastAccelStepper* stepperY_Left; // Assuming Y_Left is representative for Y position
 extern FastAccelStepper* stepperZ;
-extern FastAccelStepper* rotationStepper; // ADDED: extern declaration for rotation stepper
+extern AccelStepper* rotationStepper; // ADDED: extern declaration for rotation stepper
 extern StateMachine* stateMachine;
 // extern const float STEPS_PER_DEGREE; // This is defined in motion.h, included above
 
@@ -116,7 +117,7 @@ void handleManualRotateClockwise90() {
 
     Serial.println("Manual Tray Rotate Clockwise 90 Command Received");
     
-    float currentAngle_deg = (float)rotationStepper->getCurrentPosition() / STEPS_PER_DEGREE;
+    float currentAngle_deg = (float)rotationStepper->currentPosition() / STEPS_PER_DEGREE;
     // Normalize current angle to be positive within 0-360 before adding
     currentAngle_deg = fmod(currentAngle_deg, 360.0f);
     if (currentAngle_deg < 0) {
@@ -145,7 +146,7 @@ void handleManualRotateCounterClockwise90() {
 
     Serial.println("Manual Tray Rotate Counter-Clockwise 90 Command Received");
 
-    float currentAngle_deg = (float)rotationStepper->getCurrentPosition() / STEPS_PER_DEGREE;
+    float currentAngle_deg = (float)rotationStepper->currentPosition() / STEPS_PER_DEGREE;
     // Normalize current angle to be positive within 0-360 before subtracting
     currentAngle_deg = fmod(currentAngle_deg, 360.0f);
     if (currentAngle_deg < 0) {

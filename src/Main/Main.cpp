@@ -8,6 +8,7 @@
 #include "motors/ServoMotor.h"
 #include "storage/Persistence.h"
 #include "storage/PaintingSettings.h"
+#include "motors/Rotation_Motor.h" // For rotation stepper
 
 // Include headers for functions called in loop
 #include "web/Web_Dashboard_Commands.h" // For runDashboardServer()
@@ -64,6 +65,11 @@ void loop() {
   
   //! Handle web server and WebSocket communication
   runDashboardServer(); // Handles incoming client connections and WebSocket messages
+  
+  // Update rotation stepper for AccelStepper (non-blocking moves)
+  if (rotationStepper) {
+    rotationStepper->run();
+  }
   
   // Add calls to other main loop functions here
   // For example, state machine updates, periodic checks, etc.
