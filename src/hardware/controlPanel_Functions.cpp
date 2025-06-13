@@ -2,6 +2,11 @@
 #include "hardware/GlobalDebouncers.h"
 #include "settings/pins.h"
 #include "motors/PaintingSides.h"  // Include for side painting functions
+#include "system/StateMachine.h"   // Include for state machine functions
+#include "functionality/ManualControl.h" // Include for rotation functions
+
+// External references
+extern StateMachine* stateMachine;
 
 //* ************************************************************************
 //* ************************ CONTROL PANEL FUNCTIONS *********************
@@ -30,7 +35,7 @@ void updateControlPanelButtons() {
  * @return true if switch is pressed, false otherwise
  */
 bool isOnOffSwitchPressed() {
-    return g_onOffSwitchDebouncer.read();
+    return g_onOffSwitchDebouncer.fell();
 }
 
 /**
@@ -90,9 +95,10 @@ bool isActionRightPressed() {
  * @return ModifierButton enum value
  */
 ModifierButton getCurrentModifier() {
-    if (isModifierLeftPressed()) return MODIFIER_LEFT;
-    if (isModifierCenterPressed()) return MODIFIER_CENTER;
-    if (isModifierRightPressed()) return MODIFIER_RIGHT;
+    // Check which modifier is currently pressed (active low - pressed = LOW)
+    if (!g_modifierLeftDebouncer.read()) return MODIFIER_LEFT;
+    if (!g_modifierCenterDebouncer.read()) return MODIFIER_CENTER;
+    if (!g_modifierRightDebouncer.read()) return MODIFIER_RIGHT;
     return MODIFIER_NONE;
 }
 
@@ -112,7 +118,8 @@ bool isAnyModifierPressed() {
  * @brief Get action button that was just pressed (rising edge)
  * @return ActionButton enum value
  */
-ActionButton getActionButtonPressed() {
+ActionButton getTriggeredAction() {
+    // Check which action was just pressed (active high - pressed = rising edge)
     if (g_actionLeftDebouncer.rose()) return ACTION_LEFT;
     if (g_actionCenterDebouncer.rose()) return ACTION_CENTER;
     if (g_actionRightDebouncer.rose()) return ACTION_RIGHT;
@@ -135,21 +142,13 @@ ActionButton getActionButtonHeld() {
 //* ************************************************************************
 
 /**
- * @brief Detect button combination when action button is pressed
+ * @brief Get current button combination
  * @return ButtonCombination structure
  */
-ButtonCombination detectButtonCombination() {
+ButtonCombination getCurrentButtonCombination() {
     ButtonCombination combo;
-    combo.modifier = MODIFIER_NONE;
-    combo.action = ACTION_NONE;
-
-    // Check if an action button was just pressed
-    ActionButton actionPressed = getActionButtonPressed();
-    if (actionPressed != ACTION_NONE) {
-        combo.action = actionPressed;
-        combo.modifier = getCurrentModifier();  // Get modifier state at time of action press
-    }
-
+    combo.modifier = getCurrentModifier();
+    combo.action = getTriggeredAction();
     return combo;
 }
 
@@ -159,71 +158,48 @@ ButtonCombination detectButtonCombination() {
 
 /**
  * @brief Main function to handle button combinations
- * Call this in your main loop after updateControlPanelButtons()
+ * This should be called regularly in the main loop
  */
 void handleButtonCombinations() {
-    ButtonCombination combo = detectButtonCombination();
+    ButtonCombination combo = getCurrentButtonCombination();
     
-    if (combo.action == ACTION_NONE) return;  // No action button pressed
-
-    // Handle combinations
-    switch (combo.modifier) {
-        case MODIFIER_LEFT:
-            switch (combo.action) {
-                case ACTION_LEFT:
-                    handleModifierLeftActionLeft();
-                    break;
-                case ACTION_CENTER:
-                    handleModifierLeftActionCenter();
-                    break;
-                case ACTION_RIGHT:
-                    handleModifierLeftActionRight();
-                    break;
-            }
-            break;
-
-        case MODIFIER_CENTER:
-            switch (combo.action) {
-                case ACTION_LEFT:
-                    handleModifierCenterActionLeft();
-                    break;
-                case ACTION_CENTER:
-                    handleModifierCenterActionCenter();
-                    break;
-                case ACTION_RIGHT:
-                    handleModifierCenterActionRight();
-                    break;
-            }
-            break;
-
-        case MODIFIER_RIGHT:
-            switch (combo.action) {
-                case ACTION_LEFT:
-                    handleModifierRightActionLeft();
-                    break;
-                case ACTION_CENTER:
-                    handleModifierRightActionCenter();
-                    break;
-                case ACTION_RIGHT:
-                    handleModifierRightActionRight();
-                    break;
-            }
-            break;
-
-        case MODIFIER_NONE:
-            // Handle single action button presses (no modifier held)
-            switch (combo.action) {
-                case ACTION_LEFT:
-                    Serial.println("Action Left pressed (no modifier)");
-                    break;
-                case ACTION_CENTER:
-                    Serial.println("Action Center pressed (no modifier)");
-                    break;
-                case ACTION_RIGHT:
-                    Serial.println("Action Right pressed (no modifier)");
-                    break;
-            }
-            break;
+    // Only process if an action button was triggered
+    if (combo.action == ACTION_NONE) {
+        return; // No action button pressed
+    }
+    
+    // Handle combinations based on modifier + action
+    if (combo.modifier == MODIFIER_LEFT) {
+        switch (combo.action) {
+            case ACTION_LEFT:   handleModifierLeftActionLeft(); break;
+            case ACTION_CENTER: handleModifierLeftActionCenter(); break;
+            case ACTION_RIGHT:  handleModifierLeftActionRight(); break;
+            default: break;
+        }
+    }
+    else if (combo.modifier == MODIFIER_CENTER) {
+        switch (combo.action) {
+            case ACTION_LEFT:   handleModifierCenterActionLeft(); break;
+            case ACTION_CENTER: handleModifierCenterActionCenter(); break;
+            case ACTION_RIGHT:  handleModifierCenterActionRight(); break;
+            default: break;
+        }
+    }
+    else if (combo.modifier == MODIFIER_RIGHT) {
+        switch (combo.action) {
+            case ACTION_LEFT:   handleModifierRightActionLeft(); break;
+            case ACTION_CENTER: handleModifierRightActionCenter(); break;
+            case ACTION_RIGHT:  handleModifierRightActionRight(); break;
+            default: break;
+        }
+    }
+    else { // No modifier pressed - single action button
+        switch (combo.action) {
+            case ACTION_LEFT:   handleActionLeftOnly(); break;
+            case ACTION_CENTER: handleActionCenterOnly(); break;
+            case ACTION_RIGHT:  handleActionRightOnly(); break;
+            default: break;
+        }
     }
 }
 
@@ -252,26 +228,54 @@ void handleModifierCenterActionLeft() {
 }
 
 void handleModifierCenterActionCenter() {
-    Serial.println("COMBO: Modifier Center + Action Center - Calibrate Machine");
-    // Add your functionality here - example: calibration routine
+    Serial.println("COMBO: Modifier Center + Action Center - Rotate Tray 90° CCW");
+    handleManualRotateCounterClockwise90();
 }
 
 void handleModifierCenterActionRight() {
-    Serial.println("COMBO: Modifier Center + Action Right - Settings Menu");
-    // Add your functionality here - example: enter settings mode
+    Serial.println("COMBO: Modifier Center + Action Right - Rotate Tray 90° CW");
+    handleManualRotateClockwise90();
 }
 
 void handleModifierRightActionLeft() {
-    Serial.println("COMBO: Modifier Right + Action Left - Test Paint Gun");
-    // Add your functionality here - example: paint gun test
+    Serial.println("COMBO: Modifier Right + Action Left - Reserved for future use");
 }
 
 void handleModifierRightActionCenter() {
-    Serial.println("COMBO: Modifier Right + Action Center - Clean Cycle");
-    // Add your functionality here - example: cleaning cycle
+    Serial.println("COMBO: Modifier Right + Action Center - Reserved for future use");
 }
 
 void handleModifierRightActionRight() {
-    Serial.println("COMBO: Modifier Right + Action Right - System Info");
-    // Add your functionality here - example: display system information
+    Serial.println("COMBO: Modifier Right + Action Right - Reserved for future use");
+}
+
+// Single action button handlers (no modifier pressed)
+
+void handleActionLeftOnly() {
+    Serial.println("SINGLE ACTION: Left Button - Return Machine Home");
+    if (stateMachine) {
+        stateMachine->changeState(stateMachine->getHomingState());
+    } else {
+        Serial.println("ERROR: StateMachine not available for homing");
+    }
+}
+
+void handleActionCenterOnly() {
+    Serial.println("SINGLE ACTION: Center Button - Start Cleaning Cycle");
+    if (stateMachine) {
+        stateMachine->changeState(stateMachine->getCleaningState());
+    } else {
+        Serial.println("ERROR: StateMachine not available for cleaning");
+    }
+}
+
+void handleActionRightOnly() {
+    Serial.println("SINGLE ACTION: Right Button - Paint All Sides");
+    if (stateMachine) {
+        g_requestedCoats = 1; // Set to single coat
+        stateMachine->setTransitioningToPaintAllSides(true);
+        stateMachine->changeState(stateMachine->getPaintingState());
+    } else {
+        Serial.println("ERROR: StateMachine not available for painting");
+    }
 } 

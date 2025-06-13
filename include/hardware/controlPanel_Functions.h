@@ -52,8 +52,13 @@ ButtonCombination detectButtonCombination();
 // Function to update all control panel button debouncers
 void updateControlPanelButtons();
 
-// Function to handle button combinations
+// Main combination handler
 void handleButtonCombinations();
+
+// Single action button handlers (no modifier pressed)
+void handleActionLeftOnly();
+void handleActionCenterOnly();
+void handleActionRightOnly();
 
 // Individual combination handler functions (to be implemented based on your needs)
 void handleModifierLeftActionLeft();
