@@ -7,16 +7,63 @@
 //* ************************ CONTROL PANEL FUNCTIONS *********************
 //* ************************************************************************
 
-// Function declarations for control panel button reading
+// Enumeration for modifier buttons
+enum ModifierButton {
+    MODIFIER_NONE = 0,
+    MODIFIER_LEFT = 1,
+    MODIFIER_CENTER = 2,
+    MODIFIER_RIGHT = 3
+};
+
+// Enumeration for action buttons
+enum ActionButton {
+    ACTION_NONE = 0,
+    ACTION_LEFT = 1,
+    ACTION_CENTER = 2,
+    ACTION_RIGHT = 3
+};
+
+// Structure to hold button combination
+struct ButtonCombination {
+    ModifierButton modifier;
+    ActionButton action;
+};
+
+// Basic button state reading functions
 bool isOnOffSwitchPressed();
-bool isButton44Pressed();
-bool isButton1Pressed();
-bool isButton43Pressed();
-bool isButton17Pressed();
-bool isButton7Pressed();
-bool isButton16Pressed();
+bool isModifierLeftPressed();
+bool isModifierCenterPressed();
+bool isModifierRightPressed();
+bool isActionLeftPressed();
+bool isActionCenterPressed();
+bool isActionRightPressed();
+
+// Modifier button helper functions
+ModifierButton getCurrentModifier();
+bool isAnyModifierPressed();
+
+// Action button detection functions
+ActionButton getActionButtonPressed();      // Returns the action button that was just pressed (rose edge)
+ActionButton getActionButtonHeld();         // Returns the action button currently being held
+
+// Combination detection function
+ButtonCombination detectButtonCombination();
 
 // Function to update all control panel button debouncers
 void updateControlPanelButtons();
+
+// Function to handle button combinations
+void handleButtonCombinations();
+
+// Individual combination handler functions (to be implemented based on your needs)
+void handleModifierLeftActionLeft();
+void handleModifierLeftActionCenter();
+void handleModifierLeftActionRight();
+void handleModifierCenterActionLeft();
+void handleModifierCenterActionCenter();
+void handleModifierCenterActionRight();
+void handleModifierRightActionLeft();
+void handleModifierRightActionCenter();
+void handleModifierRightActionRight();
 
 #endif // CONTROL_PANEL_FUNCTIONS_H 

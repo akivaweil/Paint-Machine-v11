@@ -64,8 +64,9 @@ void loop() {
     stateMachine->update();
   }
   
-  // Update control panel buttons
+  // Update control panel buttons and handle combinations
   updateControlPanelButtons();
+  handleButtonCombinations();
   
   //! Handle web server and WebSocket communication
   runDashboardServer(); // Handles incoming client connections and WebSocket messages

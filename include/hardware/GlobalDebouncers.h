@@ -8,12 +8,16 @@ extern Bounce g_pnpCycleSensorDebouncer;
 
 // Control Panel Button Debouncers
 extern Bounce g_onOffSwitchDebouncer;
-extern Bounce g_button44Debouncer;
-extern Bounce g_button1Debouncer;
-extern Bounce g_button43Debouncer;
-extern Bounce g_button17Debouncer;
-extern Bounce g_button7Debouncer;
-extern Bounce g_button16Debouncer;
+
+// Modifier Buttons (Top Row - Active Low)
+extern Bounce g_modifierLeftDebouncer;
+extern Bounce g_modifierCenterDebouncer;
+extern Bounce g_modifierRightDebouncer;
+
+// Action Buttons (Bottom Row - Active High)
+extern Bounce g_actionLeftDebouncer;
+extern Bounce g_actionCenterDebouncer;
+extern Bounce g_actionRightDebouncer;
 
 // Add other global debouncers here if needed in the future
 

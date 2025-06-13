@@ -77,6 +77,9 @@ void paintSide3Pattern() {
     //! STEP 4: Lower to painting Z height
     moveToXYZ(startX_steps, DEFAULT_X_SPEED, startY_steps, DEFAULT_Y_SPEED, zPos, DEFAULT_Z_SPEED);
 
+    //! Handle web server and WebSocket communication
+    runDashboardServer(); // Handles incoming client connections and WebSocket messages
+
     //! STEP 5: Execute side 3 horizontal painting pattern
     long currentX = startX_steps;
     long currentY = startY_steps;
@@ -138,6 +141,9 @@ void paintSide3Pattern() {
         return;
     }
 
+    //! Handle web server and WebSocket communication
+    runDashboardServer(); // Handles incoming client connections and WebSocket messages
+    
     // First shift: Y- direction
     Serial.println("Side 3 Pattern: Shift Y-");
     currentY -= shiftY_steps;

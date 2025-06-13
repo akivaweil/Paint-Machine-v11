@@ -42,11 +42,15 @@
 
 // --- Control Panel Button Pins ---
 #define ON_OFF_SWITCH_PIN 2        // Main power switch
-#define BUTTON_PIN_44 44           // Control button (Rx)
-#define BUTTON_PIN_1 1             // Control button  
-#define BUTTON_PIN_43 43           // Control button (Tx)
-#define BUTTON_PIN_17 17           // Control button
-#define BUTTON_PIN_7 7             // Control button
-#define BUTTON_PIN_16 16           // Control button
+
+// Top Row - Modifier Buttons (Active Low - Pullups)
+#define MODIFIER_BUTTON_LEFT 44    // Left modifier button (Rx)
+#define MODIFIER_BUTTON_CENTER 1   // Center modifier button  
+#define MODIFIER_BUTTON_RIGHT 43   // Right modifier button (Tx)
+
+// Bottom Row - Action Buttons (Active High - Pulldowns)
+#define ACTION_BUTTON_LEFT 17      // Left action button
+#define ACTION_BUTTON_CENTER 7     // Center action button
+#define ACTION_BUTTON_RIGHT 16     // Right action button
 
 #endif // SETTINGS_PINS_H 
