@@ -67,8 +67,9 @@ void rotateToAngle(float angle) {
     // Run the stepper until it reaches the target position
     while (rotationStepper->distanceToGo() != 0) {
         rotationStepper->run();
-        // Small delay to prevent watchdog timeout
-        delay(1);
+        // Remove delay(1) - it interferes with smooth acceleration
+        // Use yield() instead to prevent watchdog timeout on ESP32
+        yield();
     }
 
     Serial.print("Rotation completed. Current position: ");
@@ -76,6 +77,23 @@ void rotateToAngle(float angle) {
     Serial.print(" steps (");
     Serial.print((float)rotationStepper->currentPosition() / STEPS_PER_DEGREE);
     Serial.println(" degrees)");
+}
+
+/**
+ * Set smoother motion parameters to reduce stuttering
+ * Call this if experiencing stuttering issues
+ */
+void setSmoothRotationMotion() {
+    if (!rotationStepper) {
+        Serial.println("ERROR: Rotation stepper not initialized!");
+        return;
+    }
+    
+    // Use gentler acceleration for smoother motion
+    rotationStepper->setMaxSpeed(DEFAULT_ROT_SPEED * 0.8f);  // Slightly slower max speed
+    rotationStepper->setAcceleration(DEFAULT_ROT_ACCEL * 0.6f);  // Much gentler acceleration
+    
+    Serial.println("Smooth rotation motion parameters applied");
 }
 
 // Implement other rotation-specific functions here if needed 

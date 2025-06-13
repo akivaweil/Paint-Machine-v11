@@ -32,6 +32,12 @@ void setupRotationMotor();
  */
 void rotateToAngle(float angle);
 
+/**
+ * @brief Set smoother motion parameters to reduce stuttering.
+ * Reduces acceleration and slightly lowers max speed for smoother movement.
+ */
+void setSmoothRotationMotion();
+
 // Add any other rotation-specific functions here if needed in the future
 // e.g., void rotateToAngle(float angle);
 // e.g., void setRotationSpeed(uint32_t speed);
