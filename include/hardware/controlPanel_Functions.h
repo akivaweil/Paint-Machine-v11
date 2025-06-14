@@ -43,11 +43,11 @@ ModifierButton getCurrentModifier();
 bool isAnyModifierPressed();
 
 // Action button detection functions
-ActionButton getActionButtonPressed();      // Returns the action button that was just pressed (rose edge)
+ActionButton getTriggeredAction();          // Returns the action button that was just pressed (rose edge)
 ActionButton getActionButtonHeld();         // Returns the action button currently being held
 
 // Combination detection function
-ButtonCombination detectButtonCombination();
+ButtonCombination getCurrentButtonCombination();
 
 // Function to update all control panel button debouncers
 void updateControlPanelButtons();
@@ -55,20 +55,12 @@ void updateControlPanelButtons();
 // Main combination handler
 void handleButtonCombinations();
 
-// Single action button handlers (no modifier pressed)
-void handleActionLeftOnly();
-void handleActionCenterOnly();
-void handleActionRightOnly();
-
-// Individual combination handler functions (to be implemented based on your needs)
-void handleModifierLeftActionLeft();
-void handleModifierLeftActionCenter();
-void handleModifierLeftActionRight();
-void handleModifierCenterActionLeft();
-void handleModifierCenterActionCenter();
-void handleModifierCenterActionRight();
-void handleModifierRightActionLeft();
-void handleModifierRightActionCenter();
-void handleModifierRightActionRight();
+// Control panel action functions - named by their functionality
+void physicalForceHome();
+void testPaintGun();
+void moveToTipInspectionPosition();
+void returnMachineHome();
+void startCleaningCycle();
+void paintAllSidesTwice();
 
 #endif // CONTROL_PANEL_FUNCTIONS_H 

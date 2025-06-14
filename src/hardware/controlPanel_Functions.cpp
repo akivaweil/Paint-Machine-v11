@@ -179,74 +179,65 @@ void handleButtonCombinations() {
     // Handle combinations based on modifier + action
     if (combo.modifier == MODIFIER_LEFT) {
         switch (combo.action) {
-            case ACTION_LEFT:   handleModifierLeftActionLeft(); break;
-            case ACTION_CENTER: handleModifierLeftActionCenter(); break;
-            case ACTION_RIGHT:  handleModifierLeftActionRight(); break;
+            case ACTION_LEFT:   
+                Serial.println("COMBO: Modifier Left + Action Left - Paint Side 1");
+                paintSide1Pattern(); 
+                break;
+            case ACTION_CENTER: 
+                Serial.println("COMBO: Modifier Left + Action Center - Paint Side 2");
+                paintSide2Pattern(); 
+                break;
+            case ACTION_RIGHT:  
+                Serial.println("COMBO: Modifier Left + Action Right - Paint Side 3");
+                paintSide3Pattern(); 
+                break;
             default: break;
         }
     }
     else if (combo.modifier == MODIFIER_CENTER) {
         switch (combo.action) {
-            case ACTION_LEFT:   handleModifierCenterActionLeft(); break;
-            case ACTION_CENTER: handleModifierCenterActionCenter(); break;
-            case ACTION_RIGHT:  handleModifierCenterActionRight(); break;
+            case ACTION_LEFT:   
+                Serial.println("COMBO: Modifier Center + Action Left - Paint Side 4");
+                paintSide4Pattern(); 
+                break;
+            case ACTION_CENTER: 
+                Serial.println("COMBO: Modifier Center + Action Center - Rotate Tray 90° CW");
+                handleManualRotateClockwise90(); 
+                break;
+            case ACTION_RIGHT:  
+                Serial.println("COMBO: Modifier Center + Action Right - Rotate Tray 90° CCW");
+                handleManualRotateCounterClockwise90(); 
+                break;
             default: break;
         }
     }
     else if (combo.modifier == MODIFIER_RIGHT) {
         switch (combo.action) {
-            case ACTION_LEFT:   handleModifierRightActionLeft(); break;
-            case ACTION_CENTER: handleModifierRightActionCenter(); break;
-            case ACTION_RIGHT:  handleModifierRightActionRight(); break;
+            case ACTION_LEFT:   physicalForceHome(); break;
+            case ACTION_CENTER: testPaintGun(); break;
+            case ACTION_RIGHT:  moveToTipInspectionPosition(); break;
             default: break;
         }
     }
     else { // No modifier pressed - single action button
         switch (combo.action) {
-            case ACTION_LEFT:   handleActionLeftOnly(); break;
-            case ACTION_CENTER: handleActionCenterOnly(); break;
-            case ACTION_RIGHT:  handleActionRightOnly(); break;
+            case ACTION_LEFT:   returnMachineHome(); break;
+            case ACTION_CENTER: startCleaningCycle(); break;
+            case ACTION_RIGHT:  paintAllSidesTwice(); break;
             default: break;
         }
     }
 }
 
 //* ************************************************************************
-//* **************** INDIVIDUAL COMBINATION FUNCTIONS *********************
+//* ****************** CONTROL PANEL ACTION FUNCTIONS *********************
 //* ************************************************************************
 
-void handleModifierLeftActionLeft() {
-    Serial.println("COMBO: Modifier Left + Action Left - Paint Side 1");
-    paintSide1Pattern();
-}
-
-void handleModifierLeftActionCenter() {
-    Serial.println("COMBO: Modifier Left + Action Center - Paint Side 2");
-    paintSide2Pattern();
-}
-
-void handleModifierLeftActionRight() {
-    Serial.println("COMBO: Modifier Left + Action Right - Paint Side 3");
-    paintSide3Pattern();
-}
-
-void handleModifierCenterActionLeft() {
-    Serial.println("COMBO: Modifier Center + Action Left - Paint Side 4");
-    paintSide4Pattern();
-}
-
-void handleModifierCenterActionCenter() {
-    Serial.println("COMBO: Modifier Center + Action Center - Rotate Tray 90° CW");
-
-        handleManualRotateClockwise90();
-}
-
-void handleModifierCenterActionRight() {
-    Serial.println("COMBO: Modifier Center + Action Right - Rotate Tray 90° CCW");
-    handleManualRotateCounterClockwise90();
-}
-
-void handleModifierRightActionLeft() {
+/**
+ * @brief Physically force machine to home position
+ * Sets the physical home button flag for safe abortion of current operations
+ */
+void physicalForceHome() {
     Serial.println("COMBO: Modifier Right + Action Left - PHYSICAL FORCE HOME");
     
     // Set the PHYSICAL home button flag - this will be checked by painting operations between movements
@@ -264,7 +255,11 @@ void handleModifierRightActionLeft() {
     }
 }
 
-void handleModifierRightActionCenter() {
+/**
+ * @brief Test paint gun for 3 seconds
+ * Only allowed when machine is in IDLE state for safety
+ */
+void testPaintGun() {
     Serial.println("COMBO: Modifier Right + Action Center - Test Paint Gun");
     
     // Only allow paint gun test in IDLE state for safety
@@ -288,7 +283,11 @@ void handleModifierRightActionCenter() {
     Serial.println("Paint gun test completed (3 seconds)");
 }
 
-void handleModifierRightActionRight() {
+/**
+ * @brief Move machine to tip inspection position
+ * Only allowed when machine is in IDLE state for safety
+ */
+void moveToTipInspectionPosition() {
     Serial.println("COMBO: Modifier Right + Action Right - Move to Tip Inspection Position");
     
     // Only allow in IDLE state for safety
@@ -306,9 +305,11 @@ void handleModifierRightActionRight() {
     }
 }
 
-// Single action button handlers (no modifier pressed)
-
-void handleActionLeftOnly() {
+/**
+ * @brief Return machine to home position
+ * Transitions to homing state
+ */
+void returnMachineHome() {
     Serial.println("SINGLE ACTION: Left Button - Return Machine Home");
     if (stateMachine) {
         stateMachine->changeState(stateMachine->getHomingState());
@@ -317,7 +318,11 @@ void handleActionLeftOnly() {
     }
 }
 
-void handleActionCenterOnly() {
+/**
+ * @brief Start cleaning cycle
+ * Transitions to cleaning state
+ */
+void startCleaningCycle() {
     Serial.println("SINGLE ACTION: Center Button - Start Cleaning Cycle");
     if (stateMachine) {
         stateMachine->changeState(stateMachine->getCleaningState());
@@ -326,10 +331,14 @@ void handleActionCenterOnly() {
     }
 }
 
-void handleActionRightOnly() {
-    Serial.println("SINGLE ACTION: Right Button - Paint All Sides");
+/**
+ * @brief Paint all sides twice
+ * Sets up for 2x coats and transitions to painting state
+ */
+void paintAllSidesTwice() {
+    Serial.println("SINGLE ACTION: Right Button - Paint All Sides Twice");
     if (stateMachine) {
-        g_requestedCoats = 1; // Set to single coat
+        g_requestedCoats = 2; // Set to 2x coats
         stateMachine->setTransitioningToPaintAllSides(true);
         stateMachine->changeState(stateMachine->getPaintingState());
     } else {
