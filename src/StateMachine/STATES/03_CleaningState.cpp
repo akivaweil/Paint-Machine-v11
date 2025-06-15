@@ -9,8 +9,8 @@
 #include "hardware/pressurePot_Functions.h"
 #include "system/StateMachine.h" // Added include
 // #include "hardware/Brush_Functions.h" // File does not exist
-#include "../../include/motors/Rotation_Motor.h" // Added for rotateToAngle
-#include "../../include/settings/painting.h"   // Added for SIDE4_ROTATION_ANGLE
+#include "motors/Rotation_Motor.h" // Added for rotateToAngle
+#include "settings/painting.h"   // Added for SIDE4_ROTATION_ANGLE
 
 // External variable for pressure pot state
 extern bool isPressurePot_ON;

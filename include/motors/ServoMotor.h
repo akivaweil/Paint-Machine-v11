@@ -7,14 +7,14 @@
 class ServoMotor {
 public:
     ServoMotor(int pin);
-    void init(int initialAngle);
-    void setAngle(int angle);
-    int getCurrentAngle();
+    void init(float initialAngle);
+    void setAngle(float angle);
+    float getCurrentAngle();
 
 private:
     Servo servo;
     int servoPin;
-    int currentAngle;
+    float currentAngle;
 };
 
 #endif // SERVOMOTOR_H 

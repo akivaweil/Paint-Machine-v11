@@ -45,9 +45,9 @@ void setup() {
   setupWebDashboardCommands(); // Initialize pins and settings for web commands
   
   // Initialize servo after settings are loaded
-  int initialServoAngle = paintingSettings.getServoAngleSide1(); // Get initial angle from loaded settings
+  float initialServoAngle = paintingSettings.getServoAngleSide1(); // Get initial angle from loaded settings
   myServo.init(initialServoAngle);
-  Serial.printf("Servo Initialized at: %d degrees\n", initialServoAngle);
+  Serial.printf("Servo Initialized at: %.1f degrees\n", initialServoAngle);
 
   // Any setup code that *must* run after initializeSystem()
   Serial.println("Setup complete. Entering main loop...");
