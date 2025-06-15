@@ -1,4 +1,4 @@
-#include "system/StateMachine.h" // Updated path
+#include "system/StateMachine.h"
 #include "states/IdleState.h"
 #include "states/HomingState.h"
 #include "states/PaintingState.h"
@@ -6,11 +6,9 @@
 #include "states/PausedState.h"
 #include "states/InspectTipState.h"
 #include <Arduino.h>
-#include "system/machine_state.h" // Updated path
+#include "system/machine_state.h"
 #include "states/State.h"
-#include <WebSocketsServer.h> // Added WebSocket header
-
-// PnPState removed - now using standalone functions
+#include <WebSocketsServer.h>
 
 //* ************************************************************************
 //* ************************* STATE MACHINE *******************************
@@ -20,7 +18,6 @@
 StateMachine* stateMachine = nullptr;
 
 // Extern declaration for the WebSocket server instance
-// Assuming it's defined in Setup.cpp or Web_Dashboard_Commands.cpp
 extern WebSocketsServer webSocket;
 
 // Flag to prevent circular state changes
@@ -28,13 +25,9 @@ bool inStateTransition = false;
 
 StateMachine::StateMachine() : 
     currentState(nullptr),
-    nextStateOverride(nullptr), // Initialize nextStateOverride
-    _isTransitioningToPaintAllSides(false), // Initialize the new flag
-    _inPaintAllSidesMode(false) // Initialize the new flag
-    // Initialize state instances here if using composition
-    // homingState(), // Example - PnP was likely here
-    // paintingSide1State(), 
-    // ... etc.
+    nextStateOverride(nullptr),
+    _isTransitioningToPaintAllSides(false),
+    _inPaintAllSidesMode(false)
 {
     // Initialize all state objects
     idleState = new IdleState();
@@ -42,7 +35,6 @@ StateMachine::StateMachine() :
     paintingState = new PaintingState();
     cleaningState = new CleaningState();
     pausedState = new PausedState();
-    // pnpState removed - now using standalone functions
     inspectTipState = new InspectTipState();
     
     // Set initial state to idle
@@ -53,8 +45,6 @@ StateMachine::StateMachine() :
     stateMachine = this;
     
     Serial.println("State Machine initialized with Idle state");
-    // Initial state broadcast might be needed here if webSocket is ready
-    // but it's safer to do it on connect in webSocketEvent
 }
 
 StateMachine::~StateMachine() {
@@ -64,7 +54,6 @@ StateMachine::~StateMachine() {
     delete paintingState;
     delete cleaningState;
     delete pausedState;
-    // pnpState removed - now using standalone functions
     delete inspectTipState;
     
     // Clear the global pointer
@@ -77,7 +66,6 @@ void StateMachine::changeState(State* newState) {
         return;
     }
     
-    // Use the new getName() method
     const char* newStateName = newState->getName();
     
     // Check if already in the target state
@@ -92,7 +80,7 @@ void StateMachine::changeState(State* newState) {
     
     if (currentState != nullptr) {
         Serial.print("Changing state from ");
-        Serial.print(currentState->getName()); // Use getName here too
+        Serial.print(currentState->getName());
         Serial.print(" to ");
         Serial.println(newStateName);
         currentState->exit();
@@ -101,26 +89,27 @@ void StateMachine::changeState(State* newState) {
     currentState = newState;
     currentState->enter();
 
-    // --- Broadcast state change --- 
+    // Broadcast state change
     String stateMessage = "STATE:";
     stateMessage += newStateName;
     webSocket.broadcastTXT(stateMessage);
     Serial.print("Broadcasted state: ");
     Serial.println(stateMessage);
-    // ----------------------------
     
     // Clear flag
     inStateTransition = false;
 }
 
 void StateMachine::update() {
-    // Update current state
     if (currentState != nullptr) {
         currentState->update();
     }
 }
 
-// --- nextStateOverride Methods ---
+//* ************************************************************************
+//* ********************* NEXT STATE OVERRIDE METHODS ********************
+//* ************************************************************************
+
 void StateMachine::setNextStateOverride(State* state) {
     nextStateOverride = state;
     if (state) {
@@ -138,9 +127,11 @@ State* StateMachine::getNextStateOverrideAndClear() {
     nextStateOverride = nullptr;
     return temp;
 }
-// --------------------------------
 
-// --- Paint All Sides Transition Flag Methods ---
+//* ************************************************************************
+//* ***************** PAINT ALL SIDES TRANSITION METHODS ******************
+//* ************************************************************************
+
 void StateMachine::setTransitioningToPaintAllSides(bool value) {
     _isTransitioningToPaintAllSides = value;
     if (value) {
@@ -161,7 +152,10 @@ void StateMachine::clearTransitioningToPaintAllSidesFlag() {
     _isTransitioningToPaintAllSides = false;
 }
 
-// --- Paint All Sides Mode Tracking Methods ---
+//* ************************************************************************
+//* ******************* PAINT ALL SIDES MODE METHODS *********************
+//* ************************************************************************
+
 void StateMachine::setInPaintAllSidesMode(bool value) {
     _inPaintAllSidesMode = value;
     if (value) {
@@ -174,30 +168,15 @@ void StateMachine::setInPaintAllSidesMode(bool value) {
 bool StateMachine::isInPaintAllSidesMode() const {
     return _inPaintAllSidesMode;
 }
-// ---------------------------------------------
 
-// Helper function to get state name (now uses the virtual method)
+//* ************************************************************************
+//* ************************* HELPER METHODS ******************************
+//* ************************************************************************
+
 const char* StateMachine::getStateName(State* state) {
     if (state != nullptr) {
         return state->getName();
     } else {
         return "Unknown";
     }
-}
-
-/* // REMOVING this duplicate/incorrect initialize() definition
-void StateMachine::initialize() {
-    Serial.println("Initializing State Machine...");
-    // Initialize state instances - Ensure PnP is removed if it was here
-    // pnpState = new PnPState(); // Example - REMOVED
-
-    // Set the initial state
-    currentState = getHomingState(); // Start with homing or idle
-    if (currentState != nullptr) {
-        currentState->enter();
-    } else {
-        Serial.println("ERROR: Initial state is null!");
-        // Handle error appropriately, maybe enter an error state
-    }
 } 
-*/ 
