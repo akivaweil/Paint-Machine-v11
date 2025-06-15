@@ -10,8 +10,7 @@
 #include "states/State.h"
 #include <WebSocketsServer.h> // Added WebSocket header
 
-// Forward declaration for PnPState (class is defined in PnPState.cpp)
-class PnPState;
+// PnPState removed - now using standalone functions
 
 //* ************************************************************************
 //* ************************* STATE MACHINE *******************************
@@ -43,7 +42,7 @@ StateMachine::StateMachine() :
     paintingState = new PaintingState();
     cleaningState = new CleaningState();
     pausedState = new PausedState();
-    pnpState = new PnPState();
+    // pnpState removed - now using standalone functions
     inspectTipState = new InspectTipState();
     
     // Set initial state to idle
@@ -65,7 +64,7 @@ StateMachine::~StateMachine() {
     delete paintingState;
     delete cleaningState;
     delete pausedState;
-    delete pnpState;
+    // pnpState removed - now using standalone functions
     delete inspectTipState;
     
     // Clear the global pointer

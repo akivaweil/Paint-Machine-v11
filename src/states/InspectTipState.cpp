@@ -4,6 +4,7 @@
 #include "utils/settings.h"
 #include "system/StateMachine.h"
 #include <WebSocketsServer.h>
+#include "states/PnPFunctions.h" // Clean PnP functions
 
 extern StateMachine *stateMachine;
 extern FastAccelStepper* stepperX;
@@ -94,14 +95,15 @@ void InspectTipState::update() {
             break;
             
         case ITS_TRANSITIONING_TO_PNP:
-            Serial.println("InspectTipState: Transitioning to PnP state");
-            if (stateMachine && stateMachine->getPnpState()) {
-                stateMachine->changeState(stateMachine->getPnpState());
-            } else {
-                Serial.println("ERROR: InspectTipState - Cannot transition to PnPState, returning to idle");
-                if (stateMachine && stateMachine->getIdleState()) {
-                    stateMachine->changeState(stateMachine->getIdleState());
-                }
+            Serial.println("InspectTipState: Starting PnP full cycle");
+            
+            // Start PnP full cycle directly using clean functions
+            startPnPFullCycle();
+            
+            // After PnP completion, return to idle state
+            Serial.println("InspectTipState: PnP completed, returning to idle");
+            if (stateMachine && stateMachine->getIdleState()) {
+                stateMachine->changeState(stateMachine->getIdleState());
             }
             currentStep = ITS_IDLE;
             break;

@@ -29,6 +29,7 @@
 #include "states/InspectTipState.h" // Include for InspectTipState
 #include <limits.h> // ADDED For LONG_MIN, INT_MIN
 #include "system/GlobalState.h" // ADDED for isPaused and isActivePainting
+#include "states/PnPFunctions.h" // Clean PnP functions - replaces state machine approach
 
 // --- PNP Settings Keys for NVS ---
 #define PNP_X_SPEED_KEY "pnpXSpd"
@@ -402,14 +403,15 @@ void processWebCommand(WebSocketsServer* webSocket, uint8_t num, String commandP
         }
     }
     else if (baseCommandAction == "START_PNP") { // Changed command name
-        // Trigger PnP state via StateMachine - NEW WAY
-        Serial.println("Transitioning to PnP State via web command...");
-        if (stateMachine) {
-            stateMachine->changeState(stateMachine->getPnpState());
-            webSocket->sendTXT(num, "CMD_ACK: PnP State initiated.");
-        } else {
-            webSocket->sendTXT(num, "CMD_ERROR: StateMachine not available.");
-        }
+        // Start PnP full cycle using clean functions - much simpler!
+        Serial.println("Starting PnP full cycle via web command...");
+        webSocket->sendTXT(num, "CMD_ACK: PnP Full Cycle starting...");
+        
+        // Run in background to avoid blocking WebSocket
+        // For now, run synchronously - could be made async later if needed
+        startPnPFullCycle();
+        
+        webSocket->sendTXT(num, "CMD_ACK: PnP Full Cycle completed.");
     }
     else if (baseCommandAction == "PAINT_GUN_ON") {
         // Safety check: Don't allow manual paint gun control during painting operations
@@ -624,17 +626,14 @@ void processWebCommand(WebSocketsServer* webSocket, uint8_t num, String commandP
         }
     }
     else if (baseCommandAction == "ENTER_PICKPLACE") {
-        // Enter pick and place mode via web command
-        // NEW WAY: Transition using StateMachine
-        Serial.println("Websocket: ENTER_PICKPLACE command received. Transitioning to PnPState...");
-        if (stateMachine) {
-            stateMachine->changeState(stateMachine->getPnpState());
-            webSocket->sendTXT(num, "CMD_ACK: PnP State initiated.");
-        } else {
-            webSocket->sendTXT(num, "CMD_ERROR: StateMachine not available.");
-        }
-
-        // Note: The actual PnP cycling will be handled by the PnPState update() method.
+        // Enter pick and place mode using clean functions
+        Serial.println("Websocket: ENTER_PICKPLACE command received. Starting PnP full cycle...");
+        webSocket->sendTXT(num, "CMD_ACK: PnP Full Cycle starting...");
+        
+        // Start the PnP full cycle directly
+        startPnPFullCycle();
+        
+        webSocket->sendTXT(num, "CMD_ACK: PnP Full Cycle completed.");
     }
     else if (baseCommandAction == "HOME") {
         // Home all axes
@@ -681,22 +680,22 @@ void processWebCommand(WebSocketsServer* webSocket, uint8_t num, String commandP
     else if (baseCommandAction == "MOVE_Z_PREVIEW") {
         float z_pos_inch = value1;
         long z_pos_steps = (long)(z_pos_inch * STEPS_PER_INCH_XYZ);
-        // Compare with StateMachine state
-        if (stateMachine && (stateMachine->getCurrentState() == stateMachine->getIdleState() || stateMachine->getCurrentState() == stateMachine->getPnpState())) { 
+        // Compare with StateMachine state - preview moves only allowed in idle
+        if (stateMachine && stateMachine->getCurrentState() == stateMachine->getIdleState()) { 
             Serial.printf("Preview move Z to: %.2f inches (%ld steps)\n", z_pos_inch, z_pos_steps);
             // Get current X and Y to maintain position
             long currentX = stepperX->getCurrentPosition();
             long currentY = stepperY_Left->getCurrentPosition(); // Assuming Left/Right are synced
             moveToXYZ(currentX, 1, currentY, 1, z_pos_steps, DEFAULT_Z_SPEED); // Use DEFAULT_Z_SPEED, wait for completion is implicit
         } else {
-            Serial.println("Preview move ignored: Machine not idle or in PnP mode.");
-            webSocket->broadcastTXT("STATUS:Preview move ignored: Machine not idle or in PnP mode.");
+            Serial.println("Preview move ignored: Machine not idle.");
+            webSocket->broadcastTXT("STATUS:Preview move ignored: Machine not idle.");
         }
     }
     else if (baseCommandAction == "MOVE_SERVO_PREVIEW") {
         int angle = (int)value1;
-        // Compare with StateMachine state
-        if (stateMachine && (stateMachine->getCurrentState() == stateMachine->getIdleState() || stateMachine->getCurrentState() == stateMachine->getPnpState())) { 
+        // Compare with StateMachine state - preview moves only allowed in idle
+        if (stateMachine && stateMachine->getCurrentState() == stateMachine->getIdleState()) { 
              if (angle >= 0 && angle <= 180) {
                  Serial.printf("Preview move Servo to: %d\n", angle);
                  myServo.setAngle(angle);
@@ -705,8 +704,8 @@ void processWebCommand(WebSocketsServer* webSocket, uint8_t num, String commandP
                  webSocket->broadcastTXT("STATUS:Invalid servo angle received for preview.");
              }
         } else {
-             Serial.println("Preview move ignored: Machine not idle or in PnP mode.");
-             webSocket->broadcastTXT("STATUS:Preview move ignored: Machine not idle or in PnP mode.");
+             Serial.println("Preview move ignored: Machine not idle.");
+             webSocket->broadcastTXT("STATUS:Preview move ignored: Machine not idle.");
         }
     }
     else if (baseCommandAction == "GET_STATUS") {

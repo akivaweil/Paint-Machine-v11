@@ -9,8 +9,7 @@
 #include "states/IdleState.h"
 #include "states/InspectTipState.h"
 
-// Forward declaration for PnPState (class is defined in PnPState.cpp)
-class PnPState;
+// PnPState removed - now using standalone functions
 
 class StateMachine {
 public:
@@ -27,7 +26,7 @@ public:
     State* getPaintingState() { return paintingState; }
     State* getCleaningState() { return cleaningState; }
     State* getPausedState() { return pausedState; }
-    State* getPnpState() { return pnpState; }
+    // getPnpState() removed - now using standalone functions
     State* getInspectTipState() { return inspectTipState; }
     
     // Mechanism to allow a state to define the next state after a sub-routine
@@ -53,7 +52,7 @@ private:
     State* paintingState;
     State* cleaningState;
     State* pausedState;
-    State* pnpState;
+    // pnpState removed - now using standalone functions
     State* inspectTipState;
     State* nextStateOverride; // Added for sub-routine returns
     bool _isTransitioningToPaintAllSides; // Flag for paint all sides transition

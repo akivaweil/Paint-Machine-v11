@@ -5,6 +5,7 @@
 #include "system/StateMachine.h" // Include for state machine access
 #include "motors/ServoMotor.h" // Include for servo control
 #include "system/GlobalState.h" // Include for isPaused global variable
+#include "states/PnPFunctions.h" // Clean PnP functions
 // GlobalDebouncers.h is already included via IdleState.h
 
 // Reference to the global state machine instance
@@ -89,13 +90,13 @@ void IdleState::update() {
 
     // Check if the PnP cycle sensor is pressed (active LOW, detected by falling edge)
     if (g_pnpCycleSensorDebouncer.fell()) { // MODIFIED: Check for falling edge on global debouncer
-        Serial.println("PnP Cycle Sensor activated (falling edge) in IdleState. Transitioning to PnPState...");
-        if (stateMachine) { // Check if stateMachine exists
-            stateMachine->changeState(stateMachine->getPnpState()); // Use getter
-        } else {
-            Serial.println("ERROR: StateMachine pointer is null in IdleState!");
-        }
-        return; // Exit update early after transition
+        Serial.println("PnP Cycle Sensor activated (falling edge) in IdleState. Starting PnP Full Cycle...");
+        
+        // Start PnP full cycle directly using clean functions
+        startPnPFullCycle();
+        
+        Serial.println("PnP Full Cycle completed, remaining in IdleState.");
+        return; // Exit update early after PnP completion
     }
 }
 
