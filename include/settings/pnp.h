@@ -13,10 +13,34 @@
 #define TRAY_HEIGHT 24.0f                      // Tray height
 
 // --- Grid Layout ---
-#define GRID_COLS 4                            // Grid columns
+#define GRID_COLS 2                            // Grid columns (was 4, now 2 columns processed at a time)
 #define GRID_ROWS 5                            // Grid rows
 #define GRID_ORIGIN_X 18.2 + 3.55f                    // Grid origin X position (top-right corner)
 #define GRID_ORIGIN_Y 32.4f                    // Grid origin Y position (top-right corner)
+
+// --- PnP Position Targeting ---
+enum PnPColumn {
+    LEFT_COLUMN = 0,
+    RIGHT_COLUMN = 1
+};
+
+enum PnPRow {
+    ROW_1 = 1,  // Start from row 1, skip row 0
+    ROW_2 = 2,
+    ROW_3 = 3,
+    ROW_4 = 4,
+    ROW_5 = 5
+};
+
+// Helper function to convert row/column to grid position
+// Note: Position 0 is skipped, so we start from position 1
+inline int getGridPosition(PnPRow row, PnPColumn column) {
+    if (row < ROW_1 || row > ROW_5) {
+        return -1; // Invalid row
+    }
+    // Skip position 0, so row 1 starts at position 1
+    return ((row - 1) * GRID_COLS) + column + 1;
+}
 
 // --- Pick Location (inches) ---
 #define PICK_LOCATION_X 16.05f                  // X coordinate for component pickup

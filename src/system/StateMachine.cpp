@@ -4,12 +4,14 @@
 #include "states/PaintingState.h"
 #include "states/CleaningState.h"
 #include "states/PausedState.h"
-#include "states/PnPState.h"
 #include "states/InspectTipState.h"
 #include <Arduino.h>
 #include "system/machine_state.h" // Updated path
 #include "states/State.h"
 #include <WebSocketsServer.h> // Added WebSocket header
+
+// Forward declaration for PnPState (class is defined in PnPState.cpp)
+class PnPState;
 
 //* ************************************************************************
 //* ************************* STATE MACHINE *******************************

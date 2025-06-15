@@ -7,7 +7,9 @@
 #include "CleaningState.h"
 #include "PausedState.h"
 #include "IdleState.h"
-#include "PnPState.h"
+
+// Forward declaration for PnPState (class is defined in PnPState.cpp)
+class PnPState;
 
 class StateMachine {
 public:

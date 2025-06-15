@@ -1,4 +1,3 @@
-#include "states/PnPState.h"
 #include <Arduino.h>
 // #include "system/machine_state.h" // No longer needed
 #include "utils/settings.h" 
@@ -15,8 +14,123 @@
 #include "states/PaintingState.h" // ADDED: Include PaintingState for transition
 #include "hardware/GlobalDebouncers.h" // For g_pnpCycleSensorDebouncer
 
-// Reference to the global state machine instance (already declared as extern in PnPState.h)
-// extern StateMachine* stateMachine; 
+// Additional includes from header file
+#include <FastAccelStepper.h>
+#include "states/State.h" // Assuming a base State class exists
+#include "settings/pnp.h" // For PnP enums and position helpers
+
+// Assuming StateMachine is needed for transitions
+class StateMachine; 
+extern StateMachine* stateMachine; 
+
+// Base PnP State - can be used for full cycle or targeted positions
+class PnPState : public State {
+public:
+    PnPState(); // Full cycle constructor
+    PnPState(PnPRow targetRow, PnPColumn targetColumn); // Targeted position constructor
+    PnPState(int specificPosition); // Direct position constructor
+    
+    void enter() override;
+    void update() override;
+    void exit() override;
+    const char* getName() const override;
+
+    // PnP specific methods
+    void setTargetPosition(PnPRow row, PnPColumn column);
+    void setTargetPosition(int position);
+    void setFullCycle(bool enable = true);
+
+private:
+    // Grid configuration
+    float gridPositionsX[GRID_ROWS * GRID_COLS];
+    float gridPositionsY[GRID_ROWS * GRID_COLS];
+
+    // Position tracking
+    int currentPnPGridPosition;
+    int targetPosition; // -1 for full cycle, specific position for targeted
+    bool isFullCycle; // true for full cycle, false for single position
+    bool pnpCycleIsComplete;
+    long pickLocationX_steps; // Pick location X in steps
+    long pickLocationY_steps; // Pick location Y in steps
+
+    // Cycle sensor (direct read)
+    // Bounce pnpCycleSensorDebouncer; // REMOVED: Now using global g_pnpCycleSensorDebouncer
+    
+    // Cycle timeout
+    unsigned long lastCycleTime;  // Timestamp of the last cycle completion
+    unsigned long cycleTimeoutMs; // Timeout duration for cycles
+    unsigned long cycleStartTimeMs; // Start time for the current cycle
+
+    // Simplified state tracking within PnPState
+    // 0: Moving to initial pick location
+    // 1: Waiting at Pick Location
+    // 2: Processing a PnP cycle (blocking Pick->Move->Place)
+    // 3: Moving back to Pick Location (non-blocking)
+    // 4: PnP Complete, ready for homing/exit transition
+    int pnp_step; 
+
+    // Flag to signal that homing is needed after PnP completion
+    bool homingNeededAfterPnP; 
+
+    // Private helper methods
+    void calculateGridPositions();
+    void initializeHardware();
+    void moveToPickLocation(bool initialMove = false); // Moves to pick location (non-blocking)
+    void process_single_pnp_cycle(); 
+    void resetStateAndReturnToIdle(); // Reset state and return to idle
+
+    // Stepper references (assuming they are globally accessible or passed somehow)
+    // If they are global like in pnp_State.cpp, we might not need them as members.
+    // extern FastAccelStepperEngine engine; // Example if needed
+    // extern FastAccelStepper *stepperX, *stepperY_Left, *stepperY_Right; // Example
+};
+
+// Simple PnP Functions - Much easier to use than classes!
+// These functions create the right PnP state and start it automatically
+
+// Full cycle function
+void startPnPFullCycle();
+
+// Individual position functions (skip position 0, start from row 1)
+void pnpRow1Left();   // Position 1
+void pnpRow1Right();  // Position 2
+void pnpRow2Left();   // Position 3
+void pnpRow2Right();  // Position 4
+void pnpRow3Left();   // Position 5 
+void pnpRow3Right();  // Position 6
+void pnpRow4Left();   // Position 7
+void pnpRow4Right();  // Position 8
+void pnpRow5Left();   // Position 9
+void pnpRow5Right();  // Position 10
+
+/*
+SIMPLE USAGE EXAMPLES:
+
+// Full cycle processing (all positions, skipping position 0)
+startPnPFullCycle();
+
+// Target specific positions - just call the function!
+pnpRow3Left();    // Your example: row 3, left column
+pnpRow2Right();   // Row 2, right column
+pnpRow1Left();    // Row 1, left column
+pnpRow5Right();   // Row 5, right column
+
+// Grid Layout (5 rows x 2 columns, position 0 is skipped):
+// Row 1: [1-Left] [2-Right]
+// Row 2: [3-Left] [4-Right] 
+// Row 3: [5-Left] [6-Right]  ← pnpRow3Left() targets this
+// Row 4: [7-Left] [8-Right]
+// Row 5: [9-Left] [10-Right]
+
+// How to use in your code:
+// Just call the function you want:
+// pnpRow3Left();  // This does row 3, left column automatically!
+
+// No need to create states or manage classes - just simple function calls!
+*/
+
+// Reference to the global state machine instance
+// extern StateMachine* stateMachine;
 
 // Assume stepper motors are globally accessible as in the original file
 extern FastAccelStepperEngine engine;
@@ -34,8 +148,11 @@ extern float g_pnp_y_accel;
 //* ************************** PnP STATE **********************************
 //* ************************************************************************
 
+// Default constructor for full cycle
 PnPState::PnPState() : 
     currentPnPGridPosition(0), 
+    targetPosition(-1), // -1 indicates full cycle
+    isFullCycle(true), // Full cycle mode
     pnpCycleIsComplete(false), 
     pnp_step(0), 
     lastCycleTime(0),
@@ -51,9 +168,53 @@ PnPState::PnPState() :
     // Calculate pick location in steps
     pickLocationX_steps = (long)(PICK_LOCATION_X * STEPS_PER_INCH_XYZ);
     pickLocationY_steps = (long)(PICK_LOCATION_Y * STEPS_PER_INCH_XYZ);
-    Serial.printf("PnPState Constructed. Pick Location Steps: X=%ld, Y=%ld\n", pickLocationX_steps, pickLocationY_steps);
+    Serial.printf("PnPState Constructed (Full Cycle). Pick Location Steps: X=%ld, Y=%ld\n", pickLocationX_steps, pickLocationY_steps);
 
     // Don't reset state variables or move here, do it in enter()
+}
+
+// Constructor for targeted row/column
+PnPState::PnPState(PnPRow targetRow, PnPColumn targetColumn) : 
+    currentPnPGridPosition(0), 
+    targetPosition(getGridPosition(targetRow, targetColumn)),
+    isFullCycle(false), // Single position mode
+    pnpCycleIsComplete(false), 
+    pnp_step(0), 
+    lastCycleTime(0),
+    pickLocationX_steps(0),
+    pickLocationY_steps(0),
+    cycleTimeoutMs(0),
+    cycleStartTimeMs(0)
+{
+    calculateGridPositions();
+    
+    // Calculate pick location in steps
+    pickLocationX_steps = (long)(PICK_LOCATION_X * STEPS_PER_INCH_XYZ);
+    pickLocationY_steps = (long)(PICK_LOCATION_Y * STEPS_PER_INCH_XYZ);
+    Serial.printf("PnPState Constructed (Targeted: Row %d, Column %d, Position %d). Pick Location Steps: X=%ld, Y=%ld\n", 
+                  targetRow, targetColumn, targetPosition, pickLocationX_steps, pickLocationY_steps);
+}
+
+// Constructor for specific position
+PnPState::PnPState(int specificPosition) : 
+    currentPnPGridPosition(0), 
+    targetPosition(specificPosition),
+    isFullCycle(false), // Single position mode
+    pnpCycleIsComplete(false), 
+    pnp_step(0), 
+    lastCycleTime(0),
+    pickLocationX_steps(0),
+    pickLocationY_steps(0),
+    cycleTimeoutMs(0),
+    cycleStartTimeMs(0)
+{
+    calculateGridPositions();
+    
+    // Calculate pick location in steps
+    pickLocationX_steps = (long)(PICK_LOCATION_X * STEPS_PER_INCH_XYZ);
+    pickLocationY_steps = (long)(PICK_LOCATION_Y * STEPS_PER_INCH_XYZ);
+    Serial.printf("PnPState Constructed (Direct Position %d). Pick Location Steps: X=%ld, Y=%ld\n", 
+                  specificPosition, pickLocationX_steps, pickLocationY_steps);
 }
 
 void PnPState::enter() {
@@ -69,39 +230,40 @@ void PnPState::enter() {
     pickLocationY_steps = (long)(PICK_LOCATION_Y * STEPS_PER_INCH_XYZ);
     Serial.printf("Pick Location Steps: X=%ld, Y=%ld\n", pickLocationX_steps, pickLocationY_steps);
 
-    // Reset state variables
-    currentPnPGridPosition = 1; // MODIFIED: Start at the second square (index 1)
+    // Reset state variables based on mode
+    if (isFullCycle) {
+        // Full cycle mode - start from position 1 (skip position 0)
+        currentPnPGridPosition = 1;
+        Serial.println("PnP Mode: Full Cycle - processing all positions (skipping position 0)");
+    } else {
+        // Targeted mode - go directly to target position
+        currentPnPGridPosition = targetPosition;
+        Serial.printf("PnP Mode: Targeted - processing position %d only\n", targetPosition);
+        
+        // Validate target position (should be 1-10, not 0)
+        if (targetPosition < 1 || targetPosition > (GRID_ROWS * GRID_COLS)) {
+            Serial.printf("ERROR: Invalid target position %d! Valid range: 1-%d\n", targetPosition, GRID_ROWS * GRID_COLS);
+            pnpCycleIsComplete = true;
+            pnp_step = 4; // Go to completion state
+            return;
+        }
+    }
+    
     pnpCycleIsComplete = false;
     pnp_step = 0; // Start with initial move to pick location
 
-    /* --- TEMPORARY MODIFICATION: Only process bottom two rows ---
-    int startRow = GRID_ROWS - 2;
-    if (startRow < 0) { // Ensure startRow is not negative if GRID_ROWS < 2
-        startRow = 0;
-    }
-    currentPnPGridPosition = startRow * GRID_COLS;
-    int totalOriginalPositions = GRID_ROWS * GRID_COLS;
-    int endPositionForThisRun = totalOriginalPositions -1; 
-
-    Serial.println("!!! TEMPORARY PnP MODE ACTIVE !!!");
-    if (GRID_ROWS < 2 && GRID_ROWS > 0) {
-        Serial.printf("NOTE: Processing only the single available row (Row 0), positions %d to %d.\n", currentPnPGridPosition, endPositionForThisRun);
-    } else if (GRID_ROWS <= 0) {
-        Serial.println("NOTE: No rows to process in PnP.");
-         pnpCycleIsComplete = true; // No positions to process
-    } else {
-        Serial.printf("NOTE: Temporarily processing only bottom two rows (starting at Row %d, positions %d to %d of %d total original positions).\n", startRow, currentPnPGridPosition, endPositionForThisRun, totalOriginalPositions);
-    }
-    Serial.println("Original full grid processing is effectively commented out by starting later.");
-    --- END TEMPORARY MODIFICATION ---*/
-
-
     // --- Initiate FIRST Move to Pick Location (Non-Blocking) ---
     Serial.println("Initiating initial move to pick location...");
+    if (isFullCycle) {
+        Serial.printf("PnP Grid Configuration: %d rows x %d columns = %d total positions\n", GRID_ROWS, GRID_COLS, GRID_ROWS * GRID_COLS);
+    } else {
+        int row = targetPosition / GRID_COLS;
+        int col = targetPosition % GRID_COLS;
+        Serial.printf("PnP Target: Row %d, Column %d (Position %d)\n", row, col, targetPosition);
+    }
     moveToPickLocation(true); // Mark as initial move, starts non-blocking move
 
     Serial.println("PnP State Setup Complete. Initial move started.");
-    // Original Note: Serial.println("NOTE: Starting at position 0 (top-right at grid origin) and working towards bottom-left (position 19).");
 }
 
 void PnPState::update() {
@@ -151,7 +313,7 @@ void PnPState::update() {
                 Serial.println("Cycle sensor active (LOW) at pick location. Proceeding...");
 
                 // Check if all positions were already completed
-                if (currentPnPGridPosition >= (GRID_ROWS * GRID_COLS)) {
+                if (currentPnPGridPosition > (GRID_ROWS * GRID_COLS)) {
                     Serial.println("All positions already completed. Setting complete flag.");
                     pnpCycleIsComplete = true;
                     pnp_step = 4; // Go to completion state
@@ -165,7 +327,7 @@ void PnPState::update() {
 
         case 2: // Process Single PnP Cycle (Blocking Pick->Move->Place)
             // Check bounds just in case before processing
-            if (currentPnPGridPosition < 0 || currentPnPGridPosition >= (GRID_ROWS * GRID_COLS)) {
+            if (currentPnPGridPosition < 1 || currentPnPGridPosition > (GRID_ROWS * GRID_COLS)) {
                 Serial.printf("ERROR: Invalid currentPnPGridPosition before processing cycle: %d\n", currentPnPGridPosition);
                 pnpCycleIsComplete = true; // Force exit
                 pnp_step = 4;
@@ -177,25 +339,33 @@ void PnPState::update() {
             process_single_pnp_cycle(); // This function blocks until done
 
             // --- Cycle Finished for this position ---
-            currentPnPGridPosition += 2; // MODIFIED: Increment by 2 to process every other square
-            Serial.printf("Cycle actions complete. Next logical position is %d.\n", currentPnPGridPosition);
-            
-            // Update the last cycle timestamp
-            // lastCycleTime = millis(); // REMOVED
-
-            // --- Decision Point: Check if all positions are now completed ---
-            if (currentPnPGridPosition >= (GRID_ROWS * GRID_COLS)) {
-                Serial.println("All PnP positions are now completed.");
-                pnpCycleIsComplete = true;
-                // Move back to pick location one last time (non-blocking) before completing
-                Serial.println("Moving back to pick location before exiting...");
-                moveToPickLocation(false); // Initiate non-blocking move back to pick
-                pnp_step = 3; // Go to 'returning to pick' state before the final completion state
+            if (isFullCycle) {
+                // Full cycle mode - increment to next position
+                currentPnPGridPosition += 1; // MODIFIED: Increment by 1 for 2-column grid
+                Serial.printf("Full Cycle: Completed position, next position is %d.\n", currentPnPGridPosition);
+                
+                // Check if all positions are completed
+                if (currentPnPGridPosition > (GRID_ROWS * GRID_COLS)) {
+                    Serial.println("All PnP positions are now completed.");
+                    pnpCycleIsComplete = true;
+                    // Move back to pick location one last time before completing
+                    Serial.println("Moving back to pick location before exiting...");
+                    moveToPickLocation(false);
+                    pnp_step = 3;
+                } else {
+                    // Move back to pick location for next cycle
+                    Serial.println("Moving back to pick location...");
+                    moveToPickLocation(false);
+                    pnp_step = 3;
+                }
             } else {
-                // Move back to pick location to wait for next cycle sensor activation
-                Serial.println("Moving back to pick location...");
-                moveToPickLocation(false); // Initiate non-blocking move back to pick
-                pnp_step = 3; // Set state to 'moving back to pick location'
+                // Targeted mode - single position complete
+                Serial.printf("Targeted: Position %d completed.\n", currentPnPGridPosition);
+                pnpCycleIsComplete = true;
+                // Move back to pick location before completing
+                Serial.println("Moving back to pick location before exiting...");
+                moveToPickLocation(false);
+                pnp_step = 3;
             }
             break; // End case 2
 
@@ -253,7 +423,16 @@ void PnPState::exit() {
 }
 
 const char* PnPState::getName() const {
-    return "PNP";
+    if (isFullCycle) {
+        return "PnP Full Cycle";
+    } else {
+        static char nameBuffer[32];
+        int row = targetPosition / GRID_COLS;
+        int col = targetPosition % GRID_COLS;
+        const char* columnName = (col == LEFT_COLUMN) ? "Left" : "Right";
+        snprintf(nameBuffer, sizeof(nameBuffer), "PnP Row %d %s", row, columnName);
+        return nameBuffer;
+    }
 }
 
 // Reset state and return to idle
@@ -283,7 +462,7 @@ void PnPState::resetStateAndReturnToIdle() {
 
 void PnPState::calculateGridPositions() {
     Serial.println("Calculating grid positions...");
-    const float X_SHIFT = 4.7f; // Inches between columns
+    const float X_SHIFT = 9.4f; // Inches between columns (updated for 2-column layout, was 4.7f for 4 columns)
     const float Y_SHIFT = 5.0f;  // Inches between rows
     for (int row = 0; row < GRID_ROWS; row++) {
         for (int col = 0; col < GRID_COLS; col++) {
@@ -362,7 +541,7 @@ void PnPState::process_single_pnp_cycle() {
     if (stepperY_Right && stepperY_Right->isRunning()) stepperY_Right->stopMove();
 
     Serial.printf("Processing PnP position %d (%d of %d)\n",
-                  currentPnPGridPosition, currentPnPGridPosition + 1, GRID_ROWS * GRID_COLS);
+                  currentPnPGridPosition, currentPnPGridPosition, GRID_ROWS * GRID_COLS);
 
     //! STEP 1: Confirm already at pick location (or move if somehow drifted - should not happen in normal flow)
     // Since we always return to pick location now, this move *should* be instantaneous or very small
@@ -389,24 +568,26 @@ void PnPState::process_single_pnp_cycle() {
     Serial.println("Pick sequence complete.");
 
     //! STEP 3: Get target grid position coordinates
-    float targetX_inch = gridPositionsX[currentPnPGridPosition];
-    float targetY_inch = gridPositionsY[currentPnPGridPosition];
+    // Convert position (1-10) to grid array index (0-9)
+    int gridIndex = currentPnPGridPosition - 1;
+    float targetX_inch = gridPositionsX[gridIndex];
+    float targetY_inch = gridPositionsY[gridIndex];
     long targetX_steps = (long)(targetX_inch * STEPS_PER_INCH_XYZ);
     long targetY_steps = (long)(targetY_inch * STEPS_PER_INCH_XYZ);
 
     //! STEP 4: Move to place position (Blocking)
-    int row = currentPnPGridPosition / GRID_COLS;
-    int col = currentPnPGridPosition % GRID_COLS;
-    Serial.printf("Moving to grid position [%d][%d] (%d): X=%.2f (%ld steps), Y=%.2f (%ld steps)\n",
-                  row, col, currentPnPGridPosition, targetX_inch, targetX_steps, targetY_inch, targetY_steps);
+    int row = gridIndex / GRID_COLS;
+    int col = gridIndex % GRID_COLS;
+    Serial.printf("Moving to grid position [%d][%d] (position %d): X=%.2f (%ld steps), Y=%.2f (%ld steps)\n",
+                  row + 1, col, currentPnPGridPosition, targetX_inch, targetX_steps, targetY_inch, targetY_steps);
 
     float y_speed_for_placement = DEFAULT_Y_SPEED; // Initialize with default Y speed
     int total_positions = GRID_ROWS * GRID_COLS;
 
     // Check if the current PnP position is the last one that will be processed before completion.
-    // Completion occurs when (currentPnPGridPosition_after_increment >= total_positions).
-    // So, if (currentPnPGridPosition + 2 >= total_positions), this is the last cycle.
-    bool isThisTheFinalPlacement = ((currentPnPGridPosition + 2) >= total_positions);
+    // Completion occurs when (currentPnPGridPosition_after_increment > total_positions).
+    // So, if (currentPnPGridPosition + 1 > total_positions), this is the last cycle.
+    bool isThisTheFinalPlacement = ((currentPnPGridPosition + 1) > total_positions);
 
     if (isThisTheFinalPlacement) {
         Serial.println("INFO: This is the final PnP placement. Reducing Y speed by half for this move.");
@@ -440,3 +621,148 @@ void PnPState::process_single_pnp_cycle() {
     // NOTE: Function ends here. The machine is currently at the place location.
     // The state machine (update loop) will now initiate the move back to the pick location.
 }
+
+// Setter methods for changing target during runtime
+void PnPState::setTargetPosition(PnPRow row, PnPColumn column) {
+    targetPosition = getGridPosition(row, column);
+    isFullCycle = false;
+    Serial.printf("PnP Target updated to Row %d, Column %d (Position %d)\n", row, column, targetPosition);
+}
+
+void PnPState::setTargetPosition(int position) {
+    if (position >= 0 && position < (GRID_ROWS * GRID_COLS)) {
+        targetPosition = position;
+        isFullCycle = false;
+        int row = position / GRID_COLS;
+        int col = position % GRID_COLS;
+        Serial.printf("PnP Target updated to Position %d (Row %d, Column %d)\n", position, row, col);
+    } else {
+        Serial.printf("ERROR: Invalid position %d! Valid range: 0-%d\n", position, (GRID_ROWS * GRID_COLS - 1));
+    }
+}
+
+void PnPState::setFullCycle(bool enable) {
+    isFullCycle = enable;
+    if (enable) {
+        targetPosition = -1;
+        Serial.println("PnP Mode set to Full Cycle");
+    } else {
+        Serial.println("PnP Mode set to Targeted (use setTargetPosition to specify)");
+    }
+}
+
+// Simple PnP Functions - Much easier to use than classes!
+// These functions create the right PnP state and start it automatically
+
+void startPnPFullCycle() {
+    if (stateMachine) {
+        Serial.println("Starting PnP Full Cycle");
+        stateMachine->changeState(new PnPState());
+    } else {
+        Serial.println("ERROR: StateMachine not available for PnP Full Cycle");
+    }
+}
+
+void pnpRow1Left() {
+    if (stateMachine) {
+        Serial.println("Starting PnP Row 1 Left");
+        stateMachine->changeState(new PnPState(ROW_1, LEFT_COLUMN));
+    } else {
+        Serial.println("ERROR: StateMachine not available for PnP Row 1 Left");
+    }
+}
+
+void pnpRow1Right() {
+    if (stateMachine) {
+        Serial.println("Starting PnP Row 1 Right");
+        stateMachine->changeState(new PnPState(ROW_1, RIGHT_COLUMN));
+    } else {
+        Serial.println("ERROR: StateMachine not available for PnP Row 1 Right");
+    }
+}
+
+void pnpRow2Left() {
+    if (stateMachine) {
+        Serial.println("Starting PnP Row 2 Left");
+        stateMachine->changeState(new PnPState(ROW_2, LEFT_COLUMN));
+    } else {
+        Serial.println("ERROR: StateMachine not available for PnP Row 2 Left");
+    }
+}
+
+void pnpRow2Right() {
+    if (stateMachine) {
+        Serial.println("Starting PnP Row 2 Right");
+        stateMachine->changeState(new PnPState(ROW_2, RIGHT_COLUMN));
+    } else {
+        Serial.println("ERROR: StateMachine not available for PnP Row 2 Right");
+    }
+}
+
+void pnpRow3Left() {
+    if (stateMachine) {
+        Serial.println("Starting PnP Row 3 Left");
+        stateMachine->changeState(new PnPState(ROW_3, LEFT_COLUMN));
+    } else {
+        Serial.println("ERROR: StateMachine not available for PnP Row 3 Left");
+    }
+}
+
+void pnpRow3Right() {
+    if (stateMachine) {
+        Serial.println("Starting PnP Row 3 Right");
+        stateMachine->changeState(new PnPState(ROW_3, RIGHT_COLUMN));
+    } else {
+        Serial.println("ERROR: StateMachine not available for PnP Row 3 Right");
+    }
+}
+
+void pnpRow4Left() {
+    if (stateMachine) {
+        Serial.println("Starting PnP Row 4 Left");
+        stateMachine->changeState(new PnPState(ROW_4, LEFT_COLUMN));
+    } else {
+        Serial.println("ERROR: StateMachine not available for PnP Row 4 Left");
+    }
+}
+
+void pnpRow4Right() {
+    if (stateMachine) {
+        Serial.println("Starting PnP Row 4 Right");
+        stateMachine->changeState(new PnPState(ROW_4, RIGHT_COLUMN));
+    } else {
+        Serial.println("ERROR: StateMachine not available for PnP Row 4 Right");
+    }
+}
+
+void pnpRow5Left() {
+    if (stateMachine) {
+        Serial.println("Starting PnP Row 5 Left");
+        stateMachine->changeState(new PnPState(ROW_5, LEFT_COLUMN));
+    } else {
+        Serial.println("ERROR: StateMachine not available for PnP Row 5 Left");
+    }
+}
+
+void pnpRow5Right() {
+    if (stateMachine) {
+        Serial.println("Starting PnP Row 5 Right");
+        stateMachine->changeState(new PnPState(ROW_5, RIGHT_COLUMN));
+    } else {
+        Serial.println("ERROR: StateMachine not available for PnP Row 5 Right");
+    }
+}
+
+// Function declarations for use by other files (replaces the deleted header file)
+// These functions can be called from anywhere in the project
+extern void startPnPFullCycle();
+extern void pnpRow1Left();
+extern void pnpRow1Right();
+extern void pnpRow2Left();
+extern void pnpRow2Right();
+extern void pnpRow3Left();
+extern void pnpRow3Right();
+extern void pnpRow4Left();
+extern void pnpRow4Right();
+extern void pnpRow5Left();
+extern void pnpRow5Right();
