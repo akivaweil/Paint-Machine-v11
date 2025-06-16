@@ -1,5 +1,5 @@
 #include "hardware/GlobalDebouncers.h"
-#include "settings/pins.h" // For PNP_CYCLE_SENSOR_PIN
+#include "../config/Pins_Definitions.h" // For PNP_CYCLE_SENSOR_PIN
 #include <Arduino.h>       // For INPUT, pinMode
 #include "settings/debounce_settings.h" // Added for centralized debounce intervals
 

@@ -13,7 +13,7 @@
 #include "system/StateMachine.h"
 #include "system/GlobalState.h"    // For isPaused
 #include <WebSocketsServer.h>     // For webSocket.loop()
-#include "../../include/settings/pins.h" // For MODIFIER_BUTTON_RIGHT definition
+#include "../config/Pins_Definitions.h" // For MODIFIER_BUTTON_RIGHT definition
 
 extern ServoMotor myServo;
 extern FastAccelStepper *stepperX;

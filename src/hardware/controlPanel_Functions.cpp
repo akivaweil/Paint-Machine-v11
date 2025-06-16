@@ -1,6 +1,6 @@
 #include "hardware/controlPanel_Functions.h"
 #include "hardware/GlobalDebouncers.h"
-#include "settings/pins.h"
+#include "../config/Pins_Definitions.h"
 #include "motors/PaintingSides.h"  // Include for side painting functions
 #include "system/StateMachine.h"   // Include for state machine functions
 #include "functionality/ManualControl.h" // Include for rotation functions

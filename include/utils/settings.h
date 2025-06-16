@@ -4,7 +4,7 @@
 #include <stdint.h> // Include for uint32_t type
 
 // Include all settings modules
-#include "settings/pins.h"
+#include "../../src/config/Pins_Definitions.h"
 #include "settings/motion.h"
 #include "settings/homing.h"
 #include "settings/timing.h"

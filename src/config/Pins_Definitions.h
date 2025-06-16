@@ -58,7 +58,7 @@
 // ==========================================================================
 
 // --- Cycle Sensors ---
-#define PNP_CYCLE_SENSOR_PIN 21    // Pick and place cycle sensor (Active LOW)
+#define PNP_CYCLE_SENSOR_PIN 21    // Pick and place cycle sensor (Active LOW - Input Pullup)
 
 // ==========================================================================
 //                            CONTROL PANEL PINS
@@ -67,12 +67,12 @@
 // --- Main Power ---
 #define ON_OFF_SWITCH_PIN 2        // Main power switch
 
-// --- Modifier Buttons (Active HIGH - Input Pulldown) ---
-#define MODIFIER_BUTTON_LEFT 44    // Left modifier button
+// --- Modifier Buttons (Physical Switches - Active HIGH - Input Pulldown) ---
+#define MODIFIER_BUTTON_LEFT 44    // Left modifier button (Rx)
 #define MODIFIER_BUTTON_CENTER 0   // Center modifier button  
-#define MODIFIER_BUTTON_RIGHT 43   // Right modifier button
+#define MODIFIER_BUTTON_RIGHT 43   // Right modifier button (Tx)
 
-// --- Action Buttons (Active LOW - Input Pullup) ---
+// --- Action Buttons (Physical Switches - Active HIGH - Input Pulldown) ---
 #define ACTION_BUTTON_LEFT 17      // Left action button
 #define ACTION_BUTTON_CENTER 7     // Center action button
 #define ACTION_BUTTON_RIGHT 16     // Right action button

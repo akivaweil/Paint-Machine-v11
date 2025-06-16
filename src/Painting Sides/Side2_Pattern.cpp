@@ -12,7 +12,7 @@
 #include <FastAccelStepper.h>
 #include "../../include/motors/ServoMotor.h"
 #include "../../include/web/Web_Dashboard_Commands.h"
-#include "../../include/settings/pins.h"
+#include "../config/Pins_Definitions.h"
 
 // External references
 extern FastAccelStepper *stepperX;
