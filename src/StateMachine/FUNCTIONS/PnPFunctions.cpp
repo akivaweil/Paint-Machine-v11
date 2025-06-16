@@ -88,6 +88,61 @@ bool pnp_checkForHomeButton() {
 }
 
 // ===========================================================================
+//                              SENSOR RELEASE FUNCTION
+// ===========================================================================
+
+/**
+ * @brief Wait for PnP sensor to be released (go HIGH) after placing component
+ * This prevents double-triggering by ensuring sensor is cleared before next cycle
+ * @return true if sensor was released, false if aborted
+ */
+bool pnp_waitForSensorRelease() {
+    Serial.println("PnP: Waiting for sensor to be released (go HIGH) before next cycle...");
+    
+    // Check current sensor state first
+    g_pnpCycleSensorDebouncer.update();
+    if (g_pnpCycleSensorDebouncer.read() == HIGH) {
+        Serial.println("PnP: Sensor already released");
+        return true;
+    }
+    
+    const unsigned long RELEASE_TIMEOUT_MS = 10000; // 10 second timeout
+    unsigned long startTime = millis();
+    
+    while (true) {
+        // Check for timeout
+        if (millis() - startTime > RELEASE_TIMEOUT_MS) {
+            Serial.println("PnP: WARNING - Sensor did not release within timeout, continuing anyway");
+            return true; // Continue anyway to prevent getting stuck
+        }
+        
+        // Check for home button
+        if (pnp_checkForHomeButton()) {
+            return false; // Abort operation
+        }
+        
+        g_pnpCycleSensorDebouncer.update();
+        
+        // Wait for sensor to go HIGH (released)
+        if (g_pnpCycleSensorDebouncer.read() == HIGH) {
+            Serial.println("PnP: Sensor released - ready for next cycle");
+            return true;
+        }
+        
+        // Print status every 2 seconds during wait
+        static unsigned long lastPrint = 0;
+        if (millis() - lastPrint > 2000) {
+            unsigned long elapsed = (millis() - startTime) / 1000;
+            Serial.printf("PnP: Waiting for sensor release (%lu/%lu sec) - Current value: %d (need HIGH)\n", 
+                         elapsed, RELEASE_TIMEOUT_MS/1000, g_pnpCycleSensorDebouncer.read());
+            lastPrint = millis();
+        }
+        
+        delay(10); // Small delay to prevent busy waiting
+    }
+}
+
+// ===========================================================================
 //                              CORE PNP FUNCTIONS
 // ===========================================================================
 
@@ -118,35 +173,6 @@ void pnp_initialize() {
 bool pnp_waitForSensor(const char* message = "Waiting for cycle sensor...") {
     Serial.println(message);
     
-    // First, ensure sensor is in released state (HIGH) to wait for a fresh activation
-    Serial.println("PnP: Ensuring sensor is released before waiting for activation...");
-    g_pnpCycleSensorDebouncer.update();
-    
-    // If sensor is already active (LOW), wait for it to be released first
-    if (g_pnpCycleSensorDebouncer.read() == LOW) {
-        Serial.println("PnP: Sensor currently active, waiting for release...");
-        unsigned long releaseWaitStart = millis();
-        const unsigned long RELEASE_WAIT_TIMEOUT_MS = 10000; // 10 second timeout for release
-        
-        while (millis() - releaseWaitStart < RELEASE_WAIT_TIMEOUT_MS) {
-            if (pnp_checkForHomeButton()) {
-                return false; // Abort operation
-            }
-            
-            g_pnpCycleSensorDebouncer.update();
-            if (g_pnpCycleSensorDebouncer.read() == HIGH) {
-                Serial.println("PnP: Sensor released, now waiting for fresh activation");
-                delay(200); // Give some time for clean release
-                break;
-            }
-            delay(10);
-        }
-        
-        if (millis() - releaseWaitStart >= RELEASE_WAIT_TIMEOUT_MS) {
-            Serial.println("PnP: WARNING - Sensor did not release, continuing anyway");
-        }
-    }
-    
     const unsigned long SENSOR_TIMEOUT_MS = 30000; // 30 second timeout
     unsigned long startTime = millis();
     
@@ -165,17 +191,17 @@ bool pnp_waitForSensor(const char* message = "Waiting for cycle sensor...") {
         
         g_pnpCycleSensorDebouncer.update();
         
-        // Wait for falling edge (fresh activation) instead of just LOW state
-        if (g_pnpCycleSensorDebouncer.fell()) {
-            Serial.println("PnP: Sensor activated (fresh falling edge)");
+        // Run cycle immediately when sensor reads LOW (active)
+        if (g_pnpCycleSensorDebouncer.read() == LOW) {
+            Serial.println("PnP: Sensor is active (LOW) - proceeding with cycle");
             return true;
         }
         
-        // Print status every 2 seconds during wait (reduced frequency)
+        // Print status every 2 seconds during wait
         static unsigned long lastPrint = 0;
         if (millis() - lastPrint > 2000) {
             unsigned long elapsed = (millis() - startTime) / 1000;
-            Serial.printf("PnP: Waiting for sensor (%lu/%lu sec) - Current value: %d (need falling edge)\n", 
+            Serial.printf("PnP: Waiting for sensor (%lu/%lu sec) - Current value: %d (need LOW)\n", 
                          elapsed, SENSOR_TIMEOUT_MS/1000, g_pnpCycleSensorDebouncer.read());
             lastPrint = millis();
         }
@@ -312,7 +338,13 @@ bool pnp_processSinglePosition(int position) {
         return false;
     }
     
-    // Step 5: Return to pick location
+    // Step 5: Wait for sensor to be released before continuing
+    if (!pnp_waitForSensorRelease()) {
+        Serial.println("PnP: Operation aborted during sensor release wait");
+        return false;
+    }
+    
+    // Step 6: Return to pick location
     if (!pnp_moveToPickLocation("Returning after placement")) {
         Serial.println("PnP: Operation aborted during return move");
         return false;
@@ -354,6 +386,12 @@ void startPnPFullCycle() {
         // Place component
         if (!pnp_placeComponent(pos)) {
             Serial.println("PnP: Full cycle aborted during place");
+            return;
+        }
+        
+        // Wait for sensor to be released before continuing to next position
+        if (!pnp_waitForSensorRelease()) {
+            Serial.println("PnP: Full cycle aborted during sensor release wait");
             return;
         }
         
