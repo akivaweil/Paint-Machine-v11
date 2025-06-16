@@ -17,7 +17,7 @@
 // --- Grid Layout ---
 #define GRID_COLS 2                            // Grid columns (was 4, now 2 columns processed at a time)
 #define GRID_ROWS 5                            // Grid rows
-#define GRID_ORIGIN_X 18.2 + 3.55f - SIDE3_SHIFT_X       // Grid origin X position (shifted by Side 3 shift value)
+#define GRID_ORIGIN_X 18.2 + 3.55f - SIDE3_SHIFT_X         // Grid origin X position (shifted by Side 3 shift value)
 #define GRID_ORIGIN_Y 32.4f                    // Grid origin Y position (top-right corner)
 
 // --- PnP Position Targeting ---

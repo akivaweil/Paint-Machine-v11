@@ -117,7 +117,7 @@ void pnp_initialize() {
 
 bool pnp_waitForSensor(const char* message = "Waiting for cycle sensor...") {
     Serial.println(message);
-3    
+    
     const unsigned long SENSOR_TIMEOUT_MS = 30000; // 30 second timeout
     unsigned long startTime = millis();
     
