@@ -335,7 +335,7 @@ bool Homing::homeAllAxes() {
         //! STEP 12: Move to position 0,32 after successful homing
         Serial.println("Moving to position 0,32 after homing...");
         long targetX_steps = 0; // X position 0 inches
-        long targetY_steps = (long)(0.3f * STEPS_PER_INCH_XYZ); // Y position 32 inches
+        long targetY_steps = (long)(0.0f * STEPS_PER_INCH_XYZ); // Y position 32 inches (ignore the comment for now)
         long targetZ_steps = 0; // Z position 0 inches (home position)
         
         // Set speeds for the move to position 0,32

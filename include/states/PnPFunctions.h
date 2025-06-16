@@ -26,7 +26,7 @@ void pnpPosition(int position); // position 1-10
 
 // Core PnP functions (for advanced use)
 void pnp_initialize();
-void pnp_processSinglePosition(int position);
+bool pnp_processSinglePosition(int position); // Returns false if aborted by home button
 
 /*
 USAGE EXAMPLES:
@@ -48,6 +48,12 @@ Row 2: [3-Left] [4-Right]
 Row 3: [5-Left] [6-Right]  
 Row 4: [7-Left] [8-Right]
 Row 5: [9-Left] [10-Right]
+
+HOME BUTTON SUPPORT:
+- Press Modifier Right + Action Left to abort PnP operations
+- Motors stop immediately, vacuum turns off, cylinder retracts
+- Machine transitions to homing state automatically
+- Home button is checked at every major step in PnP operations
 */
 
 #endif // PNP_FUNCTIONS_H 

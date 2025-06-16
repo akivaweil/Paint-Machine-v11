@@ -45,7 +45,7 @@
 
 // Top Row - Modifier Buttons (Active Low - Pullups)
 #define MODIFIER_BUTTON_LEFT 44    // Left modifier button (Rx)
-#define MODIFIER_BUTTON_CENTER 1   // Center modifier button  
+#define MODIFIER_BUTTON_CENTER 0   // Center modifier button  
 #define MODIFIER_BUTTON_RIGHT 43   // Right modifier button (Tx)
 
 // Bottom Row - Action Buttons (Active High - Pulldowns)

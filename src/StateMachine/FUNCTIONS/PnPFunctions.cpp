@@ -12,6 +12,7 @@
 #include "system/StateMachine.h"
 #include "hardware/GlobalDebouncers.h"
 #include "settings/pnp.h"
+#include "system/machine_state.h"  // For physicalHomeButtonPressed
 
 // ===========================================================================
 //                              PNP CONFIGURATION  
@@ -33,6 +34,58 @@ struct PnPConfig {
 };
 
 static PnPConfig g_pnp = {0}; // Global PnP configuration
+
+// ===========================================================================
+//                              HOME BUTTON CHECKING
+// ===========================================================================
+
+/**
+ * @brief Check if home button was pressed and handle abort if needed
+ * @return true if home button was pressed and operation should abort
+ */
+bool pnp_checkForHomeButton() {
+    extern volatile bool physicalHomeButtonPressed;
+    
+    if (physicalHomeButtonPressed) {
+        Serial.println("PnP: HOME button pressed - aborting PnP operation!");
+        
+        // Stop all motors immediately
+        extern FastAccelStepper* stepperX;
+        extern FastAccelStepper* stepperY_Left;
+        extern FastAccelStepper* stepperY_Right;
+        extern FastAccelStepper* stepperZ;
+        
+        if (stepperX && stepperX->isRunning()) {
+            stepperX->forceStopAndNewPosition(stepperX->getCurrentPosition());
+        }
+        if (stepperY_Left && stepperY_Left->isRunning()) {
+            stepperY_Left->forceStopAndNewPosition(stepperY_Left->getCurrentPosition());
+        }
+        if (stepperY_Right && stepperY_Right->isRunning()) {
+            stepperY_Right->forceStopAndNewPosition(stepperY_Right->getCurrentPosition());
+        }
+        if (stepperZ && stepperZ->isRunning()) {
+            stepperZ->forceStopAndNewPosition(stepperZ->getCurrentPosition());
+        }
+        
+        // Turn off vacuum and retract cylinder for safety
+        vacuumOff();
+        cylinderUp();
+        
+        Serial.println("PnP: Motors stopped, vacuum off, cylinder retracted");
+        
+        // Let the state machine handle the homing transition
+        extern StateMachine* stateMachine;
+        if (stateMachine) {
+            stateMachine->changeState(stateMachine->getHomingState());
+            Serial.println("PnP: Transitioning to homing state");
+        }
+        
+        return true;
+    }
+    
+    return false;
+}
 
 // ===========================================================================
 //                              CORE PNP FUNCTIONS
@@ -66,6 +119,11 @@ bool pnp_waitForSensor(const char* message = "Waiting for cycle sensor...") {
     Serial.println(message);
     
     while (true) {
+        // Check for home button first - highest priority
+        if (pnp_checkForHomeButton()) {
+            return false; // Abort operation
+        }
+        
         g_pnpCycleSensorDebouncer.update();
         
         if (g_pnpCycleSensorDebouncer.read() == LOW) {
@@ -85,8 +143,13 @@ bool pnp_waitForSensor(const char* message = "Waiting for cycle sensor...") {
     }
 }
 
-void pnp_moveToPickLocation(const char* reason = "Moving to pick location") {
+bool pnp_moveToPickLocation(const char* reason = "Moving to pick location") {
     Serial.printf("PnP: %s...\n", reason);
+    
+    // Check for home button before movement
+    if (pnp_checkForHomeButton()) {
+        return false; // Abort operation
+    }
     
     extern float g_pnp_x_speed, g_pnp_x_accel, g_pnp_y_speed, g_pnp_y_accel;
     
@@ -97,30 +160,42 @@ void pnp_moveToPickLocation(const char* reason = "Moving to pick location") {
     );
     
     Serial.println("PnP: Arrived at pick location");
+    return true;
 }
 
-void pnp_pickComponent() {
+bool pnp_pickComponent() {
     Serial.println("PnP: Picking component...");
+    
+    // Check for home button before each step
+    if (pnp_checkForHomeButton()) return false;
     
     cylinderDown();
     delay(PNP_PICK_DELAY_AFTER_CYLINDER_EXTEND);
     
+    if (pnp_checkForHomeButton()) return false;
+    
     vacuumOn();
     delay(PNP_PICK_DELAY_AFTER_VACUUM_ON + 50);
+    
+    if (pnp_checkForHomeButton()) return false;
     
     cylinderUp();
     delay(PNP_PICK_DELAY_AFTER_CYLINDER_RETRACT);
     
     Serial.println("PnP: Component picked");
+    return true;
 }
 
-void pnp_placeComponent(int position) {
+bool pnp_placeComponent(int position) {
+    // Check for home button before starting
+    if (pnp_checkForHomeButton()) return false;
+    
     // Convert position (1-10) to array index (0-9)
     int gridIndex = position - 1;
     
     if (gridIndex < 0 || gridIndex >= (GRID_ROWS * GRID_COLS)) {
         Serial.printf("ERROR: Invalid position %d\n", position);
-        return;
+        return false;
     }
     
     // Get target coordinates
@@ -135,6 +210,9 @@ void pnp_placeComponent(int position) {
     
     Serial.printf("PnP: Moving to Row %d %s (position %d)\n", row, colName, position);
     
+    // Check for home button before movement
+    if (pnp_checkForHomeButton()) return false;
+    
     // Move to place location
     moveToXYZ(
         targetX_steps, DEFAULT_X_SPEED,
@@ -144,39 +222,63 @@ void pnp_placeComponent(int position) {
     
     Serial.println("PnP: Placing component...");
     
+    // Check for home button before each step
+    if (pnp_checkForHomeButton()) return false;
+    
     cylinderDown();
     delay(PNP_PLACE_DELAY_AFTER_CYLINDER_EXTEND);
     
+    if (pnp_checkForHomeButton()) return false;
+    
     vacuumOff();
     delay(PNP_PLACE_DELAY_AFTER_VACUUM_OFF);
+    
+    if (pnp_checkForHomeButton()) return false;
     
     cylinderUp();
     delay(PNP_PLACE_DELAY_AFTER_CYLINDER_RETRACT);
     
     Serial.printf("PnP: Component placed at Row %d %s\n", row, colName);
+    return true;
 }
 
-void pnp_processSinglePosition(int position) {
+bool pnp_processSinglePosition(int position) {
     pnp_initialize();
     
     Serial.printf("PnP: Processing position %d\n", position);
     
     // Step 1: Move to pick location
-    pnp_moveToPickLocation("Starting PnP cycle");
+    if (!pnp_moveToPickLocation("Starting PnP cycle")) {
+        Serial.println("PnP: Operation aborted during initial move");
+        return false;
+    }
     
     // Step 2: Wait for sensor activation
-    pnp_waitForSensor("Ready to pick - activate sensor");
+    if (!pnp_waitForSensor("Ready to pick - activate sensor")) {
+        Serial.println("PnP: Operation aborted during sensor wait");
+        return false;
+    }
     
     // Step 3: Pick component
-    pnp_pickComponent();
+    if (!pnp_pickComponent()) {
+        Serial.println("PnP: Operation aborted during pick");
+        return false;
+    }
     
     // Step 4: Place component
-    pnp_placeComponent(position);
+    if (!pnp_placeComponent(position)) {
+        Serial.println("PnP: Operation aborted during place");
+        return false;
+    }
     
     // Step 5: Return to pick location
-    pnp_moveToPickLocation("Returning after placement");
+    if (!pnp_moveToPickLocation("Returning after placement")) {
+        Serial.println("PnP: Operation aborted during return move");
+        return false;
+    }
     
     Serial.printf("PnP: Position %d complete\n", position);
+    return true;
 }
 
 // ===========================================================================
@@ -188,25 +290,43 @@ void startPnPFullCycle() {
     pnp_initialize();
     Serial.println("PnP: Starting full cycle (positions 1-10)");
     
-    pnp_moveToPickLocation("Starting full cycle");
+    if (!pnp_moveToPickLocation("Starting full cycle")) {
+        Serial.println("PnP: Full cycle aborted during initial move");
+        return;
+    }
     
     for (int pos = 1; pos <= (GRID_ROWS * GRID_COLS); pos++) {
         Serial.printf("\n=== PnP Full Cycle: Position %d of %d ===\n", pos, GRID_ROWS * GRID_COLS);
         
         // Wait for sensor activation
-        pnp_waitForSensor();
+        if (!pnp_waitForSensor()) {
+            Serial.println("PnP: Full cycle aborted during sensor wait");
+            return;
+        }
         
         // Pick component
-        pnp_pickComponent();
+        if (!pnp_pickComponent()) {
+            Serial.println("PnP: Full cycle aborted during pick");
+            return;
+        }
         
         // Place component
-        pnp_placeComponent(pos);
+        if (!pnp_placeComponent(pos)) {
+            Serial.println("PnP: Full cycle aborted during place");
+            return;
+        }
         
         // Return to pick location for next cycle (or completion)
         if (pos < (GRID_ROWS * GRID_COLS)) {
-            pnp_moveToPickLocation("Preparing for next position");
+            if (!pnp_moveToPickLocation("Preparing for next position")) {
+                Serial.println("PnP: Full cycle aborted during return move");
+                return;
+            }
         } else {
-            pnp_moveToPickLocation("Full cycle complete - final return");
+            if (!pnp_moveToPickLocation("Full cycle complete - final return")) {
+                Serial.println("PnP: Full cycle aborted during final return");
+                return;
+            }
         }
     }
     
@@ -258,4 +378,10 @@ Row 2: [3-Left] [4-Right]
 Row 3: [5-Left] [6-Right]  
 Row 4: [7-Left] [8-Right]
 Row 5: [9-Left] [10-Right]
+
+HOME BUTTON SUPPORT:
+- Press Modifier Right + Action Left to activate home button
+- PnP operations will immediately stop all motors, turn off vacuum, retract cylinder
+- Machine will transition to homing state automatically
+- Home button is checked at every major step in PnP operations
 */ 

@@ -69,7 +69,7 @@
 
 // --- Modifier Buttons (Active HIGH - Input Pulldown) ---
 #define MODIFIER_BUTTON_LEFT 44    // Left modifier button
-#define MODIFIER_BUTTON_CENTER 1   // Center modifier button  
+#define MODIFIER_BUTTON_CENTER 0   // Center modifier button  
 #define MODIFIER_BUTTON_RIGHT 43   // Right modifier button
 
 // --- Action Buttons (Active LOW - Input Pullup) ---
