@@ -118,6 +118,35 @@ void pnp_initialize() {
 bool pnp_waitForSensor(const char* message = "Waiting for cycle sensor...") {
     Serial.println(message);
     
+    // First, ensure sensor is in released state (HIGH) to wait for a fresh activation
+    Serial.println("PnP: Ensuring sensor is released before waiting for activation...");
+    g_pnpCycleSensorDebouncer.update();
+    
+    // If sensor is already active (LOW), wait for it to be released first
+    if (g_pnpCycleSensorDebouncer.read() == LOW) {
+        Serial.println("PnP: Sensor currently active, waiting for release...");
+        unsigned long releaseWaitStart = millis();
+        const unsigned long RELEASE_WAIT_TIMEOUT_MS = 10000; // 10 second timeout for release
+        
+        while (millis() - releaseWaitStart < RELEASE_WAIT_TIMEOUT_MS) {
+            if (pnp_checkForHomeButton()) {
+                return false; // Abort operation
+            }
+            
+            g_pnpCycleSensorDebouncer.update();
+            if (g_pnpCycleSensorDebouncer.read() == HIGH) {
+                Serial.println("PnP: Sensor released, now waiting for fresh activation");
+                delay(200); // Give some time for clean release
+                break;
+            }
+            delay(10);
+        }
+        
+        if (millis() - releaseWaitStart >= RELEASE_WAIT_TIMEOUT_MS) {
+            Serial.println("PnP: WARNING - Sensor did not release, continuing anyway");
+        }
+    }
+    
     const unsigned long SENSOR_TIMEOUT_MS = 30000; // 30 second timeout
     unsigned long startTime = millis();
     
@@ -136,8 +165,9 @@ bool pnp_waitForSensor(const char* message = "Waiting for cycle sensor...") {
         
         g_pnpCycleSensorDebouncer.update();
         
-        if (g_pnpCycleSensorDebouncer.read() == LOW) {
-            Serial.println("PnP: Sensor activated");
+        // Wait for falling edge (fresh activation) instead of just LOW state
+        if (g_pnpCycleSensorDebouncer.fell()) {
+            Serial.println("PnP: Sensor activated (fresh falling edge)");
             return true;
         }
         
@@ -145,7 +175,7 @@ bool pnp_waitForSensor(const char* message = "Waiting for cycle sensor...") {
         static unsigned long lastPrint = 0;
         if (millis() - lastPrint > 2000) {
             unsigned long elapsed = (millis() - startTime) / 1000;
-            Serial.printf("PnP: Waiting for sensor (%lu/%lu sec) - Current value: %d (need LOW)\n", 
+            Serial.printf("PnP: Waiting for sensor (%lu/%lu sec) - Current value: %d (need falling edge)\n", 
                          elapsed, SENSOR_TIMEOUT_MS/1000, g_pnpCycleSensorDebouncer.read());
             lastPrint = millis();
         }

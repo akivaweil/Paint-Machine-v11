@@ -90,7 +90,27 @@ void IdleState::update() {
 
     // Check if the PnP cycle sensor is pressed (active LOW, detected by falling edge)
     if (g_pnpCycleSensorDebouncer.fell()) { // MODIFIED: Check for falling edge on global debouncer
-        Serial.println("PnP Cycle Sensor activated (falling edge) in IdleState. Starting PnP Full Cycle...");
+        Serial.println("PnP Cycle Sensor activated (falling edge) in IdleState.");
+        
+        // Wait for sensor to be released to prevent accidental double triggering
+        Serial.println("Waiting for sensor to be released...");
+        unsigned long releaseStartTime = millis();
+        const unsigned long RELEASE_TIMEOUT_MS = 5000; // 5 second timeout
+        
+        while (millis() - releaseStartTime < RELEASE_TIMEOUT_MS) {
+            g_pnpCycleSensorDebouncer.update();
+            if (g_pnpCycleSensorDebouncer.read() == HIGH) {
+                Serial.println("Sensor released. Starting PnP Full Cycle...");
+                delay(100); // Small delay to ensure clean release
+                break;
+            }
+            delay(10);
+        }
+        
+        // Check if we timed out
+        if (millis() - releaseStartTime >= RELEASE_TIMEOUT_MS) {
+            Serial.println("WARNING: Sensor release timeout. Starting PnP cycle anyway...");
+        }
         
         // Start PnP full cycle directly using clean functions
         startPnPFullCycle();
