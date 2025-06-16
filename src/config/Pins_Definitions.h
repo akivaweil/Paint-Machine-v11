@@ -45,7 +45,7 @@
 // --- Pneumatic Solenoids ---
 #define SUCTION_PIN 10             // Vacuum suction control
 #define PAINT_GUN_PIN 11           // Paint gun solenoid
-#define PRESSURE_POT_PIN 13        // Pressure pot solenoid
+#define PRESSURE_POT_PIN 13       // Pressure pot solenoid
 
 // ==========================================================================
 //                            SERVO MOTOR PINS
