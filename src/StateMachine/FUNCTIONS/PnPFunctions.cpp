@@ -118,8 +118,18 @@ void pnp_initialize() {
 bool pnp_waitForSensor(const char* message = "Waiting for cycle sensor...") {
     Serial.println(message);
     
+    const unsigned long SENSOR_TIMEOUT_MS = 30000; // 30 second timeout
+    unsigned long startTime = millis();
+    
     while (true) {
-        // Check for home button first - highest priority
+        // Check for timeout first
+        if (millis() - startTime > SENSOR_TIMEOUT_MS) {
+            Serial.println("PnP: TIMEOUT - Sensor did not activate within 30 seconds!");
+            Serial.println("PnP: Operation aborted due to sensor timeout");
+            return false; // Abort operation due to timeout
+        }
+        
+        // Check for home button - highest priority
         if (pnp_checkForHomeButton()) {
             return false; // Abort operation
         }
@@ -131,11 +141,12 @@ bool pnp_waitForSensor(const char* message = "Waiting for cycle sensor...") {
             return true;
         }
         
-        // Print status every 500ms during wait
+        // Print status every 2 seconds during wait (reduced frequency)
         static unsigned long lastPrint = 0;
-        if (millis() - lastPrint > 500) {
-            Serial.printf("PnP: Sensor value: %d (waiting for LOW)\n", 
-                         g_pnpCycleSensorDebouncer.read());
+        if (millis() - lastPrint > 2000) {
+            unsigned long elapsed = (millis() - startTime) / 1000;
+            Serial.printf("PnP: Waiting for sensor (%lu/%lu sec) - Current value: %d (need LOW)\n", 
+                         elapsed, SENSOR_TIMEOUT_MS/1000, g_pnpCycleSensorDebouncer.read());
             lastPrint = millis();
         }
         

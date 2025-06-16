@@ -359,9 +359,8 @@ void processWebCommand(WebSocketsServer* webSocket, uint8_t num, String commandP
 
     // --- STATE MACHINE CHECK --- 
     // Note: Using baseCommandAction here
-    if (stateMachine && stateMachine->getCurrentState() != stateMachine->getIdleState() && 
+        if (stateMachine && stateMachine->getCurrentState() != stateMachine->getIdleState() && 
         (baseCommandAction == "HOME_ALL" || 
-         baseCommandAction == "START_PNP" ||
          baseCommandAction == "PAINT_SIDE_1" || 
          baseCommandAction == "PAINT_SIDE_4" || 
          baseCommandAction == "PAINT_SIDE_2" || 
@@ -402,17 +401,7 @@ void processWebCommand(WebSocketsServer* webSocket, uint8_t num, String commandP
              webSocket->sendTXT(num, "CMD_ERROR: StateMachine not available.");
         }
     }
-    else if (baseCommandAction == "START_PNP") { // Changed command name
-        // Start PnP full cycle using clean functions - much simpler!
-        Serial.println("Starting PnP full cycle via web command...");
-        webSocket->sendTXT(num, "CMD_ACK: PnP Full Cycle starting...");
-        
-        // Run in background to avoid blocking WebSocket
-        // For now, run synchronously - could be made async later if needed
-        startPnPFullCycle();
-        
-        webSocket->sendTXT(num, "CMD_ACK: PnP Full Cycle completed.");
-    }
+    // REMOVED: START_PNP command - duplicate of ENTER_PICKPLACE
     else if (baseCommandAction == "PAINT_GUN_ON") {
         // Safety check: Don't allow manual paint gun control during painting operations
         if (stateMachine && stateMachine->getCurrentState() != stateMachine->getIdleState() && 
