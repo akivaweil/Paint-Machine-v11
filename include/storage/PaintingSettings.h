@@ -35,11 +35,11 @@ private:
     int side3RotationAngle = SIDE3_ROTATION_ANGLE;
     int side4RotationAngle = SIDE4_ROTATION_ANGLE;
     
-    // Servo Angles (Order: 1, 2, 3, 4) - Default to 35 as observed
-    int servoAngleSide1 = 35; 
-    int servoAngleSide2 = 35;
-    int servoAngleSide3 = 35;
-    int servoAngleSide4 = 35;
+    // Servo Angles (Order: 1, 2, 3, 4) - Using float for precise servo control
+    float servoAngleSide1 = 35.0f; 
+    float servoAngleSide2 = 35.0f;
+    float servoAngleSide3 = 35.0f;
+    float servoAngleSide4 = 35.0f;
     
     // Painting Speeds (Order: 1, 2, 3, 4)
     int side1PaintingXSpeed = SIDE1_PAINTING_X_SPEED;
@@ -127,14 +127,14 @@ public:
     void setSide4RotationAngle(int value);
     
     // Servo Angles (Order: 1, 2, 3, 4)
-    int getServoAngleSide1();
-    void setServoAngleSide1(int value);
-    int getServoAngleSide2();
-    void setServoAngleSide2(int value);
-    int getServoAngleSide3();
-    void setServoAngleSide3(int value);
-    int getServoAngleSide4();
-    void setServoAngleSide4(int value);
+    float getServoAngleSide1();
+    void setServoAngleSide1(float value);
+    float getServoAngleSide2();
+    void setServoAngleSide2(float value);
+    float getServoAngleSide3();
+    void setServoAngleSide3(float value);
+    float getServoAngleSide4();
+    void setServoAngleSide4(float value);
     
     // Painting Speeds (Order: 1, 2, 3, 4)
     int getSide1PaintingXSpeed();

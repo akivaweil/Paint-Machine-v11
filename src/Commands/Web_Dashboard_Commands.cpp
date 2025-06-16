@@ -682,11 +682,11 @@ void processWebCommand(WebSocketsServer* webSocket, uint8_t num, String commandP
         }
     }
     else if (baseCommandAction == "MOVE_SERVO_PREVIEW") {
-        int angle = (int)value1;
+        float angle = value1;
         // Compare with StateMachine state - preview moves only allowed in idle
         if (stateMachine && stateMachine->getCurrentState() == stateMachine->getIdleState()) { 
-             if (angle >= 0 && angle <= 180) {
-                 Serial.printf("Preview move Servo to: %d\n", angle);
+             if (angle >= 0.0f && angle <= 180.0f) {
+                 Serial.printf("Preview move Servo to: %.1f\n", angle);
                  myServo.setAngle(angle);
              } else {
                  Serial.println("Invalid servo angle received for preview.");
@@ -758,35 +758,31 @@ void processWebCommand(WebSocketsServer* webSocket, uint8_t num, String commandP
         Serial.println("Saved X Overlap: " + String(value1));
     }
     else if (baseCommandAction == "SET_SERVO_ANGLE_SIDE1") {
-        int angle = valueStr.toInt();
+        float angle = valueStr.toFloat();
         paintingSettings.setServoAngleSide1(angle); // Update in memory
         paintingSettings.saveSettings(); // Save all settings
-        Serial.print("Servo Angle Side 1 set to (and saved): "); // Added debug
-        Serial.println(angle);
+        Serial.printf("Servo Angle Side 1 set to (and saved): %.1f\n", angle); // Added debug
         webSocket->sendTXT(num, "CMD_ACK: Servo Angle Side 1 set and saved");
     }
     else if (baseCommandAction == "SET_SERVO_ANGLE_SIDE2") {
-        int angle = valueStr.toInt();
+        float angle = valueStr.toFloat();
         paintingSettings.setServoAngleSide2(angle); // Update in memory
         paintingSettings.saveSettings(); // Save all settings
-        Serial.print("Servo Angle Side 2 set to (and saved): "); // Added debug
-        Serial.println(angle);
+        Serial.printf("Servo Angle Side 2 set to (and saved): %.1f\n", angle); // Added debug
         webSocket->sendTXT(num, "CMD_ACK: Servo Angle Side 2 set and saved");
     }
     else if (baseCommandAction == "SET_SERVO_ANGLE_SIDE3") {
-        int angle = valueStr.toInt();
+        float angle = valueStr.toFloat();
         paintingSettings.setServoAngleSide3(angle); // Update in memory
         paintingSettings.saveSettings(); // Save all settings
-        Serial.print("Servo Angle Side 3 set to (and saved): "); // Added debug
-        Serial.println(angle);
+        Serial.printf("Servo Angle Side 3 set to (and saved): %.1f\n", angle); // Added debug
         webSocket->sendTXT(num, "CMD_ACK: Servo Angle Side 3 set and saved");
     }
     else if (baseCommandAction == "SET_SERVO_ANGLE_SIDE4") {
-        int angle = valueStr.toInt();
+        float angle = valueStr.toFloat();
         paintingSettings.setServoAngleSide4(angle); // Update in memory
         paintingSettings.saveSettings(); // Save all settings
-        Serial.print("Servo Angle Side 4 set to (and saved): "); // Added debug
-        Serial.println(angle);
+        Serial.printf("Servo Angle Side 4 set to (and saved): %.1f\n", angle); // Added debug
         webSocket->sendTXT(num, "CMD_ACK: Servo Angle Side 4 set and saved");
     }
     else if (baseCommandAction == "SAVE_PAINT_SETTINGS") {
@@ -1218,13 +1214,13 @@ void processWebCommand(WebSocketsServer* webSocket, uint8_t num, String commandP
         // Servo Angles (Order: 1, 2, 3, 4)
         // NOTE: Originally read directly from NVS using old keys. Changed to use getters 
         // from the paintingSettings object to ensure consistency and fix persistence issue.
-        message = "SETTING:servoAngleSide1:" + String(paintingSettings.getServoAngleSide1()); // Use getter
+        message = "SETTING:servoAngleSide1:" + String(paintingSettings.getServoAngleSide1(), 1); // Use getter with 1 decimal
         webSocket->broadcastTXT(message);
-        message = "SETTING:servoAngleSide2:" + String(paintingSettings.getServoAngleSide2()); // Use getter
+        message = "SETTING:servoAngleSide2:" + String(paintingSettings.getServoAngleSide2(), 1); // Use getter with 1 decimal
         webSocket->broadcastTXT(message);
-        message = "SETTING:servoAngleSide3:" + String(paintingSettings.getServoAngleSide3()); // Use getter
+        message = "SETTING:servoAngleSide3:" + String(paintingSettings.getServoAngleSide3(), 1); // Use getter with 1 decimal
         webSocket->broadcastTXT(message);
-        message = "SETTING:servoAngleSide4:" + String(paintingSettings.getServoAngleSide4()); // Use getter
+        message = "SETTING:servoAngleSide4:" + String(paintingSettings.getServoAngleSide4(), 1); // Use getter with 1 decimal
         webSocket->broadcastTXT(message);
     }
     else if (baseCommandAction == "GOTO_PNP_PICK_LOCATION") {
