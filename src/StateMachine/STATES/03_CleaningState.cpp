@@ -213,6 +213,11 @@ void CleaningState::update() {
 
 void CleaningState::exit() {
     Serial.println("Exiting Cleaning State");
+    
+    // Start servo rotation to idle angle immediately
+    Serial.println("CleaningState: Starting servo rotation to idle angle");
+    myServo.setAngle(0); // Set to idle angle immediately
+    
     // Ensure paint gun and pressure pot are off when exiting
     if (paintGunActive) {
         paintGun_OFF();
