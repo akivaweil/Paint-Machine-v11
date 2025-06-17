@@ -29,7 +29,7 @@
 #include "states/InspectTipState.h" // Include for InspectTipState
 #include <limits.h> // ADDED For LONG_MIN, INT_MIN
 #include "system/GlobalState.h" // ADDED for isPaused and isActivePainting
-#include "states/PnPFunctions.h" // Clean PnP functions - replaces state machine approach
+// PnP functionality now handled by PnPState in the state machine
 
 // --- PNP Settings Keys for NVS ---
 #define PNP_X_SPEED_KEY "pnpXSpd"
@@ -615,14 +615,17 @@ void processWebCommand(WebSocketsServer* webSocket, uint8_t num, String commandP
         }
     }
     else if (baseCommandAction == "ENTER_PICKPLACE") {
-        // Enter pick and place mode using clean functions
-        Serial.println("Websocket: ENTER_PICKPLACE command received. Starting PnP full cycle...");
-        webSocket->sendTXT(num, "CMD_ACK: PnP Full Cycle starting...");
+        // Enter pick and place mode using state machine
+        Serial.println("Websocket: ENTER_PICKPLACE command received. Transitioning to PnP state...");
+        webSocket->sendTXT(num, "CMD_ACK: PnP state transition starting...");
         
-        // Start the PnP full cycle directly
-        startPnPFullCycle();
-        
-        webSocket->sendTXT(num, "CMD_ACK: PnP Full Cycle completed.");
+        // Transition to PnP state
+        if (stateMachine) {
+            stateMachine->changeState(stateMachine->getPnpState());
+            webSocket->sendTXT(num, "CMD_ACK: PnP state entered.");
+        } else {
+            webSocket->sendTXT(num, "CMD_ERROR: StateMachine not available.");
+        }
     }
     else if (baseCommandAction == "HOME") {
         // Home all axes

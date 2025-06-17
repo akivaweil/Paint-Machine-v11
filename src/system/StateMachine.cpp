@@ -4,6 +4,7 @@
 #include "states/PaintingState.h"
 #include "states/CleaningState.h"
 #include "states/PausedState.h"
+#include "states/PnPState.h"
 #include "states/InspectTipState.h"
 #include <Arduino.h>
 #include "system/machine_state.h"
@@ -35,6 +36,7 @@ StateMachine::StateMachine() :
     paintingState = new PaintingState();
     cleaningState = new CleaningState();
     pausedState = new PausedState();
+    pnpState = new PnPState();
     inspectTipState = new InspectTipState();
     
     // Set initial state to idle
@@ -54,6 +56,7 @@ StateMachine::~StateMachine() {
     delete paintingState;
     delete cleaningState;
     delete pausedState;
+    delete pnpState;
     delete inspectTipState;
     
     // Clear the global pointer
