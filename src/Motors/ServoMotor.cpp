@@ -41,15 +41,17 @@ void ServoMotor::setAngle(float angle) {
     // Constrain angle to valid range
     float constrainedAngle = constrainAngle(angle);
     
-    // Only move if angle actually changed (avoid unnecessary servo movement)
-    if (abs(constrainedAngle - currentAngle) > 0.1f) {
-        servo.write(constrainedAngle);
-        currentAngle = constrainedAngle;
-        
-        // Debug output only when significant movement occurs
-        if (abs(constrainedAngle - angle) > 0.1f) {
-            Serial.printf("Servo angle constrained from %.1f to %.1f degrees\n", angle, constrainedAngle);
-        }
+    Serial.printf("ServoMotor: setAngle called - requested: %.1f°, constrained: %.1f°, current: %.1f°\n", 
+                  angle, constrainedAngle, currentAngle);
+    
+    // Always move the servo and update position (removed the threshold check for debugging)
+    servo.write(constrainedAngle);
+    currentAngle = constrainedAngle;
+    Serial.printf("ServoMotor: Servo commanded to move to %.1f degrees\n", constrainedAngle);
+    
+    // Debug output if angle was constrained
+    if (abs(constrainedAngle - angle) > 0.1f) {
+        Serial.printf("ServoMotor: Angle constrained from %.1f to %.1f degrees\n", angle, constrainedAngle);
     }
 }
 

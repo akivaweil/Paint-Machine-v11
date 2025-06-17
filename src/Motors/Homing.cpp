@@ -58,19 +58,32 @@ bool Homing::homeAllAxes() {
     // Get reference to the global servo motor instance
     extern ServoMotor myServo;
     
+    // Check if servo is properly attached
+    if (!myServo.isAttached()) {
+        Serial.println("ERROR: Servo is not attached! Cannot perform initialization sequence.");
+        return false;
+    }
+    
+    // Display current servo angle
+    float currentAngle = myServo.getCurrentAngle();
+    Serial.printf("Homing: Current servo angle: %.1f degrees\n", currentAngle);
+    
     // Move servo to 90 degrees
     Serial.println("Homing: Moving servo to 90 degrees...");
     myServo.setAngle(90.0f);
+    Serial.printf("Homing: Servo angle after setting to 90°: %.1f degrees\n", myServo.getCurrentAngle());
     delay(1000); // Wait for servo to reach position
     
     // Move servo to 120 degrees
     Serial.println("Homing: Moving servo to 120 degrees...");
     myServo.setAngle(120.0f);
+    Serial.printf("Homing: Servo angle after setting to 120°: %.1f degrees\n", myServo.getCurrentAngle());
     delay(1000); // Wait for servo to reach position
     
     // Move servo back to 90 degrees
     Serial.println("Homing: Moving servo back to 90 degrees...");
     myServo.setAngle(90.0f);
+    Serial.printf("Homing: Servo angle after setting back to 90°: %.1f degrees\n", myServo.getCurrentAngle());
     delay(1000); // Wait for servo to reach position
     
     Serial.println("Homing: Servo initialization sequence complete.");
