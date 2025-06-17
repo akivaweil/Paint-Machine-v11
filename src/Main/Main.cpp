@@ -49,6 +49,25 @@ void setup() {
   myServo.init(initialServoAngle);
   Serial.printf("Servo Initialized at: %.1f degrees\n", initialServoAngle);
 
+  // Startup servo sequence from other chat
+  Serial.println("Starting servo initialization sequence...");
+  Serial.println("Moving to 60 degrees...");
+  myServo.setAngle(60);
+  Serial.println("Servo command sent: 60 degrees");
+  delay(1000);
+  
+  Serial.println("Moving to 90 degrees...");
+  myServo.setAngle(90);
+  Serial.println("Servo command sent: 90 degrees");
+  delay(1000);
+  
+  Serial.println("Moving to 110 degrees...");
+  myServo.setAngle(110);
+  Serial.println("Servo command sent: 110 degrees");
+  delay(1000);
+  
+  Serial.println("Servo initialization complete - ready for commands!");
+
   // Any setup code that *must* run after initializeSystem()
   Serial.println("Setup complete. Entering main loop...");
 }
