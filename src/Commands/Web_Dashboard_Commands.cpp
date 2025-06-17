@@ -29,6 +29,7 @@
 #include "states/InspectTipState.h" // Include for InspectTipState
 #include <limits.h> // ADDED For LONG_MIN, INT_MIN
 #include "system/GlobalState.h" // ADDED for isPaused and isActivePainting
+#include "states/PnPFunctions.h" // Clean PnP functions - replaces state machine approach
 
 // --- PNP Settings Keys for NVS ---
 #define PNP_X_SPEED_KEY "pnpXSpd"
@@ -358,9 +359,8 @@ void processWebCommand(WebSocketsServer* webSocket, uint8_t num, String commandP
 
     // --- STATE MACHINE CHECK --- 
     // Note: Using baseCommandAction here
-    if (stateMachine && stateMachine->getCurrentState() != stateMachine->getIdleState() && 
+        if (stateMachine && stateMachine->getCurrentState() != stateMachine->getIdleState() && 
         (baseCommandAction == "HOME_ALL" || 
-         baseCommandAction == "START_PNP" ||
          baseCommandAction == "PAINT_SIDE_1" || 
          baseCommandAction == "PAINT_SIDE_4" || 
          baseCommandAction == "PAINT_SIDE_2" || 
@@ -401,22 +401,29 @@ void processWebCommand(WebSocketsServer* webSocket, uint8_t num, String commandP
              webSocket->sendTXT(num, "CMD_ERROR: StateMachine not available.");
         }
     }
-    else if (baseCommandAction == "START_PNP") { // Changed command name
-        // Trigger PnP state via StateMachine - NEW WAY
-        Serial.println("Transitioning to PnP State via web command...");
-        if (stateMachine) {
-            stateMachine->changeState(stateMachine->getPnpState());
-            webSocket->sendTXT(num, "CMD_ACK: PnP State initiated.");
-        } else {
-            webSocket->sendTXT(num, "CMD_ERROR: StateMachine not available.");
-        }
-    }
+    // REMOVED: START_PNP command - duplicate of ENTER_PICKPLACE
     else if (baseCommandAction == "PAINT_GUN_ON") {
+        // Safety check: Don't allow manual paint gun control during painting operations
+        if (stateMachine && stateMachine->getCurrentState() != stateMachine->getIdleState() && 
+            stateMachine->getCurrentState() != stateMachine->getInspectTipState()) {
+            Serial.println("Manual paint gun control blocked during active painting operations");
+            webSocket->sendTXT(num, "CMD_ERROR: Manual paint gun control blocked during painting");
+            return;
+        }
+        
         // Turn on paint gun
         paintGun_ON();
         webSocket->sendTXT(num, "CMD_ACK: Paint Gun ON");
     }
     else if (baseCommandAction == "PAINT_GUN_OFF") {
+        // Safety check: Don't allow manual paint gun control during painting operations
+        if (stateMachine && stateMachine->getCurrentState() != stateMachine->getIdleState() && 
+            stateMachine->getCurrentState() != stateMachine->getInspectTipState()) {
+            Serial.println("Manual paint gun control blocked during active painting operations");
+            webSocket->sendTXT(num, "CMD_ERROR: Manual paint gun control blocked during painting");
+            return;
+        }
+        
         // Turn off paint gun
         paintGun_OFF();
         webSocket->sendTXT(num, "CMD_ACK: Paint Gun OFF");
@@ -608,17 +615,14 @@ void processWebCommand(WebSocketsServer* webSocket, uint8_t num, String commandP
         }
     }
     else if (baseCommandAction == "ENTER_PICKPLACE") {
-        // Enter pick and place mode via web command
-        // NEW WAY: Transition using StateMachine
-        Serial.println("Websocket: ENTER_PICKPLACE command received. Transitioning to PnPState...");
-        if (stateMachine) {
-            stateMachine->changeState(stateMachine->getPnpState());
-            webSocket->sendTXT(num, "CMD_ACK: PnP State initiated.");
-        } else {
-            webSocket->sendTXT(num, "CMD_ERROR: StateMachine not available.");
-        }
-
-        // Note: The actual PnP cycling will be handled by the PnPState update() method.
+        // Enter pick and place mode using clean functions
+        Serial.println("Websocket: ENTER_PICKPLACE command received. Starting PnP full cycle...");
+        webSocket->sendTXT(num, "CMD_ACK: PnP Full Cycle starting...");
+        
+        // Start the PnP full cycle directly
+        startPnPFullCycle();
+        
+        webSocket->sendTXT(num, "CMD_ACK: PnP Full Cycle completed.");
     }
     else if (baseCommandAction == "HOME") {
         // Home all axes
@@ -665,32 +669,32 @@ void processWebCommand(WebSocketsServer* webSocket, uint8_t num, String commandP
     else if (baseCommandAction == "MOVE_Z_PREVIEW") {
         float z_pos_inch = value1;
         long z_pos_steps = (long)(z_pos_inch * STEPS_PER_INCH_XYZ);
-        // Compare with StateMachine state
-        if (stateMachine && (stateMachine->getCurrentState() == stateMachine->getIdleState() || stateMachine->getCurrentState() == stateMachine->getPnpState())) { 
+        // Compare with StateMachine state - preview moves only allowed in idle
+        if (stateMachine && stateMachine->getCurrentState() == stateMachine->getIdleState()) { 
             Serial.printf("Preview move Z to: %.2f inches (%ld steps)\n", z_pos_inch, z_pos_steps);
             // Get current X and Y to maintain position
             long currentX = stepperX->getCurrentPosition();
             long currentY = stepperY_Left->getCurrentPosition(); // Assuming Left/Right are synced
             moveToXYZ(currentX, 1, currentY, 1, z_pos_steps, DEFAULT_Z_SPEED); // Use DEFAULT_Z_SPEED, wait for completion is implicit
         } else {
-            Serial.println("Preview move ignored: Machine not idle or in PnP mode.");
-            webSocket->broadcastTXT("STATUS:Preview move ignored: Machine not idle or in PnP mode.");
+            Serial.println("Preview move ignored: Machine not idle.");
+            webSocket->broadcastTXT("STATUS:Preview move ignored: Machine not idle.");
         }
     }
     else if (baseCommandAction == "MOVE_SERVO_PREVIEW") {
-        int angle = (int)value1;
-        // Compare with StateMachine state
-        if (stateMachine && (stateMachine->getCurrentState() == stateMachine->getIdleState() || stateMachine->getCurrentState() == stateMachine->getPnpState())) { 
-             if (angle >= 0 && angle <= 180) {
-                 Serial.printf("Preview move Servo to: %d\n", angle);
+        float angle = value1;
+        // Compare with StateMachine state - preview moves only allowed in idle
+        if (stateMachine && stateMachine->getCurrentState() == stateMachine->getIdleState()) { 
+             if (angle >= 0.0f && angle <= 180.0f) {
+                 Serial.printf("Preview move Servo to: %.1f\n", angle);
                  myServo.setAngle(angle);
              } else {
                  Serial.println("Invalid servo angle received for preview.");
                  webSocket->broadcastTXT("STATUS:Invalid servo angle received for preview.");
              }
         } else {
-             Serial.println("Preview move ignored: Machine not idle or in PnP mode.");
-             webSocket->broadcastTXT("STATUS:Preview move ignored: Machine not idle or in PnP mode.");
+             Serial.println("Preview move ignored: Machine not idle.");
+             webSocket->broadcastTXT("STATUS:Preview move ignored: Machine not idle.");
         }
     }
     else if (baseCommandAction == "GET_STATUS") {
@@ -754,35 +758,31 @@ void processWebCommand(WebSocketsServer* webSocket, uint8_t num, String commandP
         Serial.println("Saved X Overlap: " + String(value1));
     }
     else if (baseCommandAction == "SET_SERVO_ANGLE_SIDE1") {
-        int angle = valueStr.toInt();
+        float angle = valueStr.toFloat();
         paintingSettings.setServoAngleSide1(angle); // Update in memory
         paintingSettings.saveSettings(); // Save all settings
-        Serial.print("Servo Angle Side 1 set to (and saved): "); // Added debug
-        Serial.println(angle);
+        Serial.printf("Servo Angle Side 1 set to (and saved): %.1f\n", angle); // Added debug
         webSocket->sendTXT(num, "CMD_ACK: Servo Angle Side 1 set and saved");
     }
     else if (baseCommandAction == "SET_SERVO_ANGLE_SIDE2") {
-        int angle = valueStr.toInt();
+        float angle = valueStr.toFloat();
         paintingSettings.setServoAngleSide2(angle); // Update in memory
         paintingSettings.saveSettings(); // Save all settings
-        Serial.print("Servo Angle Side 2 set to (and saved): "); // Added debug
-        Serial.println(angle);
+        Serial.printf("Servo Angle Side 2 set to (and saved): %.1f\n", angle); // Added debug
         webSocket->sendTXT(num, "CMD_ACK: Servo Angle Side 2 set and saved");
     }
     else if (baseCommandAction == "SET_SERVO_ANGLE_SIDE3") {
-        int angle = valueStr.toInt();
+        float angle = valueStr.toFloat();
         paintingSettings.setServoAngleSide3(angle); // Update in memory
         paintingSettings.saveSettings(); // Save all settings
-        Serial.print("Servo Angle Side 3 set to (and saved): "); // Added debug
-        Serial.println(angle);
+        Serial.printf("Servo Angle Side 3 set to (and saved): %.1f\n", angle); // Added debug
         webSocket->sendTXT(num, "CMD_ACK: Servo Angle Side 3 set and saved");
     }
     else if (baseCommandAction == "SET_SERVO_ANGLE_SIDE4") {
-        int angle = valueStr.toInt();
+        float angle = valueStr.toFloat();
         paintingSettings.setServoAngleSide4(angle); // Update in memory
         paintingSettings.saveSettings(); // Save all settings
-        Serial.print("Servo Angle Side 4 set to (and saved): "); // Added debug
-        Serial.println(angle);
+        Serial.printf("Servo Angle Side 4 set to (and saved): %.1f\n", angle); // Added debug
         webSocket->sendTXT(num, "CMD_ACK: Servo Angle Side 4 set and saved");
     }
     else if (baseCommandAction == "SAVE_PAINT_SETTINGS") {
@@ -1214,13 +1214,13 @@ void processWebCommand(WebSocketsServer* webSocket, uint8_t num, String commandP
         // Servo Angles (Order: 1, 2, 3, 4)
         // NOTE: Originally read directly from NVS using old keys. Changed to use getters 
         // from the paintingSettings object to ensure consistency and fix persistence issue.
-        message = "SETTING:servoAngleSide1:" + String(paintingSettings.getServoAngleSide1()); // Use getter
+        message = "SETTING:servoAngleSide1:" + String(paintingSettings.getServoAngleSide1(), 1); // Use getter with 1 decimal
         webSocket->broadcastTXT(message);
-        message = "SETTING:servoAngleSide2:" + String(paintingSettings.getServoAngleSide2()); // Use getter
+        message = "SETTING:servoAngleSide2:" + String(paintingSettings.getServoAngleSide2(), 1); // Use getter with 1 decimal
         webSocket->broadcastTXT(message);
-        message = "SETTING:servoAngleSide3:" + String(paintingSettings.getServoAngleSide3()); // Use getter
+        message = "SETTING:servoAngleSide3:" + String(paintingSettings.getServoAngleSide3(), 1); // Use getter with 1 decimal
         webSocket->broadcastTXT(message);
-        message = "SETTING:servoAngleSide4:" + String(paintingSettings.getServoAngleSide4()); // Use getter
+        message = "SETTING:servoAngleSide4:" + String(paintingSettings.getServoAngleSide4(), 1); // Use getter with 1 decimal
         webSocket->broadcastTXT(message);
     }
     else if (baseCommandAction == "GOTO_PNP_PICK_LOCATION") {
@@ -1368,9 +1368,9 @@ bool checkForHomeCommand() {
   // Process any pending WebSocket events using enhanced processing
   processWebSocketEventsFrequently();
   
-  // Check if a home command was received
+  // Check if a websocket home command was received
   if (homeCommandReceived) {
-    Serial.println("HOME command received - immediately aborting all operations");
+    Serial.println("WEBSOCKET HOME command received - immediately aborting all operations");
     
     // IMMEDIATELY stop all motors
     if (stepperX->isRunning()) stepperX->forceStopAndNewPosition(stepperX->getCurrentPosition());
@@ -1380,7 +1380,27 @@ bool checkForHomeCommand() {
     
     // If we have a state machine, immediately change to homing state
     if (stateMachine) {
-      Serial.println("Changing to homing state immediately due to HOME command");
+      Serial.println("Changing to homing state immediately due to WEBSOCKET HOME command");
+      stateMachine->changeState(stateMachine->getHomingState());
+    }
+    
+    return true;
+  }
+  
+  // Also check for physical home button
+  extern volatile bool physicalHomeButtonPressed;
+  if (physicalHomeButtonPressed) {
+    Serial.println("PHYSICAL HOME button pressed - immediately aborting all operations");
+    
+    // IMMEDIATELY stop all motors
+    if (stepperX->isRunning()) stepperX->forceStopAndNewPosition(stepperX->getCurrentPosition());
+    if (stepperY_Left->isRunning()) stepperY_Left->forceStopAndNewPosition(stepperY_Left->getCurrentPosition());
+    if (stepperY_Right->isRunning()) stepperY_Right->forceStopAndNewPosition(stepperY_Right->getCurrentPosition());
+    if (stepperZ->isRunning()) stepperZ->forceStopAndNewPosition(stepperZ->getCurrentPosition());
+    
+    // If we have a state machine, immediately change to homing state
+    if (stateMachine) {
+      Serial.println("Changing to homing state immediately due to PHYSICAL HOME button");
       stateMachine->changeState(stateMachine->getHomingState());
     }
     
@@ -1391,7 +1411,7 @@ bool checkForHomeCommand() {
 }
 
 // Function to check for PAUSE command during painting operations
-// Returns true if the operation was aborted due to home command while paused
+// Returns true if the operation was aborted due to PHYSICAL home button while paused
 bool checkForPauseCommand() {
   static unsigned long lastCheckTime = 0;
   unsigned long currentTime = millis();
@@ -1406,16 +1426,17 @@ bool checkForPauseCommand() {
   // Process any pending WebSocket events first using the enhanced function
   processWebSocketEventsFrequently();
   
-  // If paused, wait in a loop until unpaused or home command received
+  // If paused, wait in a loop until unpaused or physical home button pressed
   if (isPaused) { 
     Serial.println("[DEBUG] PAUSED DETECTED. Entering wait loop.");
     while (isPaused) {
       // Continue processing WebSocket events while paused (more frequently)
       processWebSocketEventsFrequently();
       
-      // Check for home command while paused
-      if (homeCommandReceived) {
-        Serial.println("HOME command received while paused - aborting operation");
+      // Check for PHYSICAL home button while paused
+      extern volatile bool physicalHomeButtonPressed;
+      if (physicalHomeButtonPressed) {
+        Serial.println("PHYSICAL HOME button pressed while paused - aborting operation");
         isPaused = false; // Clear pause state since we're aborting
         return true; // Indicate that operation was aborted
       }
@@ -1427,8 +1448,21 @@ bool checkForPauseCommand() {
     Serial.println("\n[DEBUG] RESUMED. Exiting wait loop.");
   }
   
-  // Final check for home command even if not paused
-  return homeCommandReceived;
+  // Final check for PHYSICAL home button even if not paused
+  extern volatile bool physicalHomeButtonPressed;
+  if (physicalHomeButtonPressed) {
+    Serial.println("PHYSICAL HOME button pressed during painting - immediately stopping all motors");
+    
+    // IMMEDIATELY stop all motors
+    if (stepperX->isRunning()) stepperX->forceStopAndNewPosition(stepperX->getCurrentPosition());
+    if (stepperY_Left->isRunning()) stepperY_Left->forceStopAndNewPosition(stepperY_Left->getCurrentPosition());
+    if (stepperY_Right->isRunning()) stepperY_Right->forceStopAndNewPosition(stepperY_Right->getCurrentPosition());
+    if (stepperZ->isRunning()) stepperZ->forceStopAndNewPosition(stepperZ->getCurrentPosition());
+    
+    return true;
+  }
+  
+  return false;
 }
 
 // Function to check and restart WebSocket if needed

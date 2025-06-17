@@ -3,9 +3,9 @@
 // #include <Bounce2.h> // No longer needed here, included via GlobalDebouncers.h
 #include "utils/settings.h" // Include for PNP_CYCLE_SENSOR_PIN
 #include "system/StateMachine.h" // Include for state machine access
-#include "states/PnPState.h" // Include the new PnPState
 #include "motors/ServoMotor.h" // Include for servo control
 #include "system/GlobalState.h" // Include for isPaused global variable
+#include "states/PnPFunctions.h" // Clean PnP functions
 // GlobalDebouncers.h is already included via IdleState.h
 
 // Reference to the global state machine instance
@@ -90,13 +90,33 @@ void IdleState::update() {
 
     // Check if the PnP cycle sensor is pressed (active LOW, detected by falling edge)
     if (g_pnpCycleSensorDebouncer.fell()) { // MODIFIED: Check for falling edge on global debouncer
-        Serial.println("PnP Cycle Sensor activated (falling edge) in IdleState. Transitioning to PnPState...");
-        if (stateMachine) { // Check if stateMachine exists
-            stateMachine->changeState(stateMachine->getPnpState()); // Use getter
-        } else {
-            Serial.println("ERROR: StateMachine pointer is null in IdleState!");
+        Serial.println("PnP Cycle Sensor activated (falling edge) in IdleState.");
+        
+        // Wait for sensor to be released to prevent accidental double triggering
+        Serial.println("Waiting for sensor to be released...");
+        unsigned long releaseStartTime = millis();
+        const unsigned long RELEASE_TIMEOUT_MS = 5000; // 5 second timeout
+        
+        while (millis() - releaseStartTime < RELEASE_TIMEOUT_MS) {
+            g_pnpCycleSensorDebouncer.update();
+            if (g_pnpCycleSensorDebouncer.read() == HIGH) {
+                Serial.println("Sensor released. Starting PnP Full Cycle...");
+                delay(100); // Small delay to ensure clean release
+                break;
+            }
+            delay(10);
         }
-        return; // Exit update early after transition
+        
+        // Check if we timed out
+        if (millis() - releaseStartTime >= RELEASE_TIMEOUT_MS) {
+            Serial.println("WARNING: Sensor release timeout. Starting PnP cycle anyway...");
+        }
+        
+        // Start PnP full cycle directly using clean functions
+        startPnPFullCycle();
+        
+        Serial.println("PnP Full Cycle completed, remaining in IdleState.");
+        return; // Exit update early after PnP completion
     }
 }
 

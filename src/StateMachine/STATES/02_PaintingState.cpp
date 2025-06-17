@@ -43,12 +43,13 @@ void PaintingState::enter() {
     
     // Check if we are in the special "Paint All Sides" transition
     if (stateMachine && stateMachine->isTransitioningToPaintAllSides()) {
-        Serial.println("PaintingState: Detected 'Paint All Sides' transition. Starting 'All Sides' directly without cleaning.");
-        currentStep = PS_PERFORM_ALL_SIDES_PAINTING; // Set step to perform all sides painting
+        Serial.println("PaintingState: Detected 'Paint All Sides' transition. Starting with Side 4.");
+        currentStep = PS_START_SIDE4_PAINTING; // Start with Side 4
         stateMachine->clearTransitioningToPaintAllSidesFlag(); // Clear the flag as it has been handled
+        stateMachine->setInPaintAllSidesMode(true); // Set persistent mode flag
     } else if (currentStep == PS_IDLE) {
-        Serial.println("PaintingState: enter() - Normal entry. Starting 'All Sides' directly without cleaning.");
-        currentStep = PS_PERFORM_ALL_SIDES_PAINTING; // Go directly to painting
+        Serial.println("PaintingState: enter() - Normal entry. Starting with Side 4.");
+        currentStep = PS_START_SIDE4_PAINTING; // Start with Side 4
     } else {
         Serial.print("PaintingState: enter() - CurrentStep is not IDLE. Preserving currentStep: ");
         Serial.println(currentStep); // Log its value if preserved.
@@ -63,6 +64,47 @@ void PaintingState::update() {
     long xPos, yPos, zPos;
     
     switch (currentStep) {
+        case PS_START_SIDE4_PAINTING:
+            Serial.println("PaintingState: Starting Side 4 painting");
+            paintSide4Pattern(); // This will transition to Side4State
+            currentStep = PS_WAIT_FOR_SIDE4_COMPLETION;
+            break;
+            
+        case PS_WAIT_FOR_SIDE4_COMPLETION:
+            // Wait for Side4State to complete and return to PaintingState
+            // The Side4State will transition back to PaintingState when done
+            break;
+            
+        case PS_START_SIDE3_PAINTING:
+            Serial.println("PaintingState: Starting Side 3 painting");
+            paintSide3Pattern(); // This will transition to Side3State
+            currentStep = PS_WAIT_FOR_SIDE3_COMPLETION;
+            break;
+            
+        case PS_WAIT_FOR_SIDE3_COMPLETION:
+            // Wait for Side3State to complete and return to PaintingState
+            break;
+            
+        case PS_START_SIDE2_PAINTING:
+            Serial.println("PaintingState: Starting Side 2 painting");
+            paintSide2Pattern(); // This will transition to Side2State
+            currentStep = PS_WAIT_FOR_SIDE2_COMPLETION;
+            break;
+            
+        case PS_WAIT_FOR_SIDE2_COMPLETION:
+            // Wait for Side2State to complete and return to PaintingState
+            break;
+            
+        case PS_START_SIDE1_PAINTING:
+            Serial.println("PaintingState: Starting Side 1 painting");
+            paintSide1Pattern(); // This will transition to Side1State
+            currentStep = PS_WAIT_FOR_SIDE1_COMPLETION;
+            break;
+            
+        case PS_WAIT_FOR_SIDE1_COMPLETION:
+            // Wait for Side1State to complete and return to PaintingState
+            break;
+
         case PS_PERFORM_ALL_SIDES_PAINTING:
             Serial.println("PaintingState: Starting all sides painting routine.");
             paintAllSides(); // This is assumed to be a blocking call
@@ -84,12 +126,15 @@ void PaintingState::update() {
         
         case PS_REQUEST_HOMING:
             Serial.println("PaintingState: Sequence complete. Requesting Homing State.");
-            if (stateMachine && stateMachine->getHomingState()) {
-                stateMachine->changeState(stateMachine->getHomingState());
-            } else {
-                Serial.println("ERROR: PaintingState - Cannot transition to HomingState.");
-                if (stateMachine && stateMachine->getIdleState()) {
-                   stateMachine->changeState(stateMachine->getIdleState());
+            if (stateMachine) {
+                stateMachine->setInPaintAllSidesMode(false); // Clear Paint All Sides mode
+                if (stateMachine->getHomingState()) {
+                    stateMachine->changeState(stateMachine->getHomingState());
+                } else {
+                    Serial.println("ERROR: PaintingState - Cannot transition to HomingState.");
+                    if (stateMachine->getIdleState()) {
+                       stateMachine->changeState(stateMachine->getIdleState());
+                    }
                 }
             }
             currentStep = PS_IDLE; // Reset for next entry into PaintingState
@@ -112,6 +157,37 @@ void PaintingState::exit() {
 const char* PaintingState::getName() const {
     return "PAINTING";
 }
+
+// New method to handle side completion callbacks
+void PaintingState::onSideCompleted() {
+    switch (currentStep) {
+        case PS_WAIT_FOR_SIDE4_COMPLETION:
+            Serial.println("PaintingState: Side 4 completed, starting Side 3");
+            currentStep = PS_START_SIDE3_PAINTING;
+            break;
+            
+        case PS_WAIT_FOR_SIDE3_COMPLETION:
+            Serial.println("PaintingState: Side 3 completed, starting Side 2");
+            currentStep = PS_START_SIDE2_PAINTING;
+            break;
+            
+        case PS_WAIT_FOR_SIDE2_COMPLETION:
+            Serial.println("PaintingState: Side 2 completed, starting Side 1");
+            currentStep = PS_START_SIDE1_PAINTING;
+            break;
+            
+        case PS_WAIT_FOR_SIDE1_COMPLETION:
+            Serial.println("PaintingState: Side 1 completed, moving to completion");
+            currentStep = PS_MOVE_TO_POSITION_BEFORE_HOMING;
+            break;
+            
+        default:
+            Serial.println("PaintingState: Unexpected side completion callback");
+            break;
+    }
+}
+
+
 
 //* ************************************************************************
 //* ************************** PAINTING STATE ****************************

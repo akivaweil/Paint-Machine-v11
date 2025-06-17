@@ -28,13 +28,13 @@
 #define DEFAULT_X_SPEED 20000          // Default X axis speed
 #define DEFAULT_Y_SPEED 30000          // Default Y axis speed
 #define DEFAULT_Z_SPEED 5000           // Default Z axis speed
-#define DEFAULT_ROT_SPEED 2000         // Default rotation axis speed
+#define DEFAULT_ROT_SPEED 5000         // Default rotation axis speed
 
 // --- Default Accelerations ---
 #define DEFAULT_X_ACCEL 25000          // Default X axis acceleration
 #define DEFAULT_Y_ACCEL 30000          // Default Y axis acceleration
 #define DEFAULT_Z_ACCEL 13000          // Default Z axis acceleration
-#define DEFAULT_ROT_ACCEL 3000         // Default rotation axis acceleration
+#define DEFAULT_ROT_ACCEL 5000         // Default rotation axis acceleration
 
 // --- PNP Speeds ---
 #define DEFAULT_PNP_X_SPEED 20000     // Default PNP X axis speed

@@ -241,7 +241,7 @@ void initializeSystem() {
     initializeMotorsAndSwitches();
     Serial.println("Motors and Switches Initialized."); // Keep one summary message
     
-    setupRotationMotor(engine);
+    setupRotationMotor();
     // setupRotationMotor logs its own success/fail
     
     initializePaintGun();

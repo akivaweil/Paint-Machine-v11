@@ -8,6 +8,9 @@
 #include "motors/ServoMotor.h"
 #include "storage/Persistence.h"
 #include "storage/PaintingSettings.h"
+#include "motors/Rotation_Motor.h" // For rotation stepper
+#include "hardware/controlPanel_Functions.h" // For control panel buttons
+#include "config/Pins_Definitions.h" // For servo pin definition
 
 // Include headers for functions called in loop
 #include "web/Web_Dashboard_Commands.h" // For runDashboardServer()
@@ -19,16 +22,16 @@ extern bool webSocketServerStarted;
 // Global variables
 unsigned long lastDebounceTime = 0;
 const unsigned long debounceDelay = 10;
-const int servoPin = 4;
 
-ServoMotor myServo(servoPin);
+ServoMotor myServo(SERVO_PIN); // Use defined pin constant instead of hardcoded value
 extern PaintingSettings paintingSettings;
 
 // State machine
 extern StateMachine* stateMachine;
 
-// Define the global flag previously in machine_state.cpp
-volatile bool homeCommandReceived = false;
+// Define the global flags previously in machine_state.cpp
+volatile bool homeCommandReceived = false;        // For websocket home commands
+volatile bool physicalHomeButtonPressed = false;  // For physical control panel home button
 
 //* ************************************************************************
 //* ***************************** MAIN *******************************
@@ -42,9 +45,9 @@ void setup() {
   setupWebDashboardCommands(); // Initialize pins and settings for web commands
   
   // Initialize servo after settings are loaded
-  int initialServoAngle = paintingSettings.getServoAngleSide1(); // Get initial angle from loaded settings
+  float initialServoAngle = paintingSettings.getServoAngleSide1(); // Get initial angle from loaded settings
   myServo.init(initialServoAngle);
-  Serial.printf("Servo Initialized at: %d degrees\n", initialServoAngle);
+  Serial.printf("Servo Initialized at: %.1f degrees\n", initialServoAngle);
 
   // Any setup code that *must* run after initializeSystem()
   Serial.println("Setup complete. Entering main loop...");
@@ -62,8 +65,17 @@ void loop() {
     stateMachine->update();
   }
   
+  // Update control panel buttons and handle combinations
+  updateControlPanelButtons();
+  handleButtonCombinations();
+  
   //! Handle web server and WebSocket communication
   runDashboardServer(); // Handles incoming client connections and WebSocket messages
+  
+  // Update rotation stepper for AccelStepper (non-blocking moves)
+  if (rotationStepper) {
+    rotationStepper->run();
+  }
   
   // Add calls to other main loop functions here
   // For example, state machine updates, periodic checks, etc.

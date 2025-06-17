@@ -7,8 +7,9 @@
 #include "states/CleaningState.h"
 #include "states/PausedState.h"
 #include "states/IdleState.h"
-#include "states/PnPState.h"
 #include "states/InspectTipState.h"
+
+// PnPState removed - now using standalone functions
 
 class StateMachine {
 public:
@@ -25,7 +26,7 @@ public:
     State* getPaintingState() { return paintingState; }
     State* getCleaningState() { return cleaningState; }
     State* getPausedState() { return pausedState; }
-    State* getPnpState() { return pnpState; }
+    // getPnpState() removed - now using standalone functions
     State* getInspectTipState() { return inspectTipState; }
     
     // Mechanism to allow a state to define the next state after a sub-routine
@@ -39,6 +40,10 @@ public:
     void setTransitioningToPaintAllSides(bool value);
     bool isTransitioningToPaintAllSides() const; // No longer clears flag
     void clearTransitioningToPaintAllSidesFlag();
+    
+    // Persistent flag for tracking Paint All Sides mode during execution
+    void setInPaintAllSidesMode(bool value);
+    bool isInPaintAllSidesMode() const;
 
 private:
     State* currentState;
@@ -47,10 +52,11 @@ private:
     State* paintingState;
     State* cleaningState;
     State* pausedState;
-    State* pnpState;
+    // pnpState removed - now using standalone functions
     State* inspectTipState;
     State* nextStateOverride; // Added for sub-routine returns
     bool _isTransitioningToPaintAllSides; // Flag for paint all sides transition
+    bool _inPaintAllSidesMode; // Persistent flag to track if we're in Paint All Sides mode
 };
 
 #endif // STATEMACHINE_H 

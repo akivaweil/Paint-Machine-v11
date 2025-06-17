@@ -7,11 +7,13 @@
 #include "motors/XYZ_Movements.h"
 #include "utils/settings.h"
 #include <FastAccelStepper.h>
+#include <AccelStepper.h>
 #include "motors/Homing.h"
 #include "motors/Rotation_Motor.h"
 #include "system/StateMachine.h"
 #include "system/GlobalState.h"    // For isPaused
 #include <WebSocketsServer.h>     // For webSocket.loop()
+#include "../config/Pins_Definitions.h" // For MODIFIER_BUTTON_RIGHT definition
 
 extern ServoMotor myServo;
 extern FastAccelStepper *stepperX;
@@ -20,7 +22,7 @@ extern FastAccelStepper *stepperY_Right;
 extern FastAccelStepper *stepperZ;
 extern bool isPressurePot_ON;
 extern FastAccelStepperEngine engine;
-extern FastAccelStepper *rotationStepper;
+extern AccelStepper *rotationStepper;
 extern StateMachine* stateMachine;
 extern WebSocketsServer webSocket;    // For pause loop
 
@@ -195,6 +197,11 @@ void paintAllSides() {
         }
         Serial.println("Reached loading bar start position.");
 
+        //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+        while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+            delay(10); // Small delay to prevent excessive CPU usage
+        }
+
         Serial.println("Starting X-axis loading bar movement for delay.");
         long target_x_end_loading_bar_steps = (long)(LOADING_BAR_X_END * STEPS_PER_INCH_XYZ);
         float duration_seconds = (float)g_interCoatDelaySeconds;
@@ -233,6 +240,11 @@ void paintAllSides() {
             Serial.printf("Loading bar movement (%d) complete.\n", coat);
         }
 
+        //! Check MODIFIER_BUTTON_RIGHT - wait while button is active (low)
+        while(digitalRead(MODIFIER_BUTTON_RIGHT) == LOW) {
+            delay(10); // Small delay to prevent excessive CPU usage
+        }
+
         Serial.printf("Finished inter-coat delay for coat %d. Ready for coat %d.\n", coat, coat + 1);
     }
 
@@ -261,8 +273,9 @@ void paintAllSides() {
         if (stepperX->isRunning()) stepperX->forceStopAndNewPosition(stepperX->getCurrentPosition());
         if (stepperY_Left->isRunning()) stepperY_Left->forceStopAndNewPosition(stepperY_Left->getCurrentPosition());
         if (stepperZ->isRunning()) stepperZ->forceStopAndNewPosition(stepperZ->getCurrentPosition());
-        if (rotationStepper && rotationStepper->isRunning()) {
-            rotationStepper->forceStopAndNewPosition(rotationStepper->getCurrentPosition());
+        if (rotationStepper && rotationStepper->distanceToGo() != 0) {
+            rotationStepper->stop(); // Stop the stepper
+            rotationStepper->setCurrentPosition(rotationStepper->currentPosition()); // Set current position
         }
     }
 } 

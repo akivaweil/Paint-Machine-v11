@@ -7,7 +7,8 @@
 #include "CleaningState.h"
 #include "PausedState.h"
 #include "IdleState.h"
-#include "PnPState.h"
+
+// PnPState removed - now using standalone functions
 
 class StateMachine {
 public:
@@ -24,7 +25,7 @@ public:
     State* getPaintingState() { return paintingState; }
     State* getCleaningState() { return cleaningState; }
     State* getPausedState() { return pausedState; }
-    State* getPnpState() { return pnpState; }
+    // getPnpState() removed - now using standalone functions
     
     // Helper method to get state name for debugging
     const char* getStateName(State* state);
@@ -36,7 +37,7 @@ private:
     State* paintingState;
     State* cleaningState;
     State* pausedState;
-    State* pnpState;
+    // pnpState removed - now using standalone functions
 };
 
 #endif // STATEMACHINE_H 

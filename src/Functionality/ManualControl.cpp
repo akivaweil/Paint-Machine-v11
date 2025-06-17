@@ -5,6 +5,7 @@
 #include "system/StateMachine.h"
 #include "states/State.h" // Required for state->getName()
 #include <FastAccelStepper.h> // Required for stepper->getCurrentPosition()
+#include <AccelStepper.h> // Required for rotation stepper
 #include "motors/Rotation_Motor.h" // ADDED for tray rotation
 #include "settings/motion.h" // ADDED for STEPS_PER_DEGREE
 #include <limits.h> // For LONG_MIN, INT_MIN
@@ -14,7 +15,7 @@ extern ServoMotor myServo;
 extern FastAccelStepper* stepperX;
 extern FastAccelStepper* stepperY_Left; // Assuming Y_Left is representative for Y position
 extern FastAccelStepper* stepperZ;
-extern FastAccelStepper* rotationStepper; // ADDED: extern declaration for rotation stepper
+extern AccelStepper* rotationStepper; // ADDED: extern declaration for rotation stepper
 extern StateMachine* stateMachine;
 // extern const float STEPS_PER_DEGREE; // This is defined in motion.h, included above
 
@@ -116,20 +117,10 @@ void handleManualRotateClockwise90() {
 
     Serial.println("Manual Tray Rotate Clockwise 90 Command Received");
     
-    float currentAngle_deg = (float)rotationStepper->getCurrentPosition() / STEPS_PER_DEGREE;
-    // Normalize current angle to be positive within 0-360 before adding
-    currentAngle_deg = fmod(currentAngle_deg, 360.0f);
-    if (currentAngle_deg < 0) {
-        currentAngle_deg += 360.0f;
-    }
-
-    float newTargetAngle_deg = currentAngle_deg + 90.0f;
-    // The rotateToAngle function handles shortest path and normalization to 0-360 target.
-    // Example: if current is 270, newTarget will be 360. rotateToAngle(360) or rotateToAngle(0) should work.
-    // If current is 350, newTarget will be 440. rotateToAngle(440) should be interpreted as rotateToAngle(80).
-
-    Serial.printf("Current Tray Angle: %.2f deg, New Target: %.2f deg\n", currentAngle_deg, newTargetAngle_deg);
-    rotateToAngle(newTargetAngle_deg);
+    // !!! IMPORTANT: Using non-tracking manual rotation function !!!
+    // This allows manual reorientation without affecting paint cycles
+    manualRotateClockwise90();
+    
     Serial.println("Manual tray rotation CW 90 complete.");
 }
 
@@ -145,18 +136,9 @@ void handleManualRotateCounterClockwise90() {
 
     Serial.println("Manual Tray Rotate Counter-Clockwise 90 Command Received");
 
-    float currentAngle_deg = (float)rotationStepper->getCurrentPosition() / STEPS_PER_DEGREE;
-    // Normalize current angle to be positive within 0-360 before subtracting
-    currentAngle_deg = fmod(currentAngle_deg, 360.0f);
-    if (currentAngle_deg < 0) {
-        currentAngle_deg += 360.0f;
-    }
-
-    float newTargetAngle_deg = currentAngle_deg - 90.0f;
-    // The rotateToAngle function handles shortest path and normalization to 0-360 target.
-    // Example: if current is 0, newTarget will be -90. rotateToAngle(-90) should be interpreted as rotateToAngle(270).
-
-    Serial.printf("Current Tray Angle: %.2f deg, New Target: %.2f deg\n", currentAngle_deg, newTargetAngle_deg);
-    rotateToAngle(newTargetAngle_deg);
+    // !!! IMPORTANT: Using non-tracking manual rotation function !!!
+    // This allows manual reorientation without affecting paint cycles
+    manualRotateCounterClockwise90();
+    
     Serial.println("Manual tray rotation CCW 90 complete.");
 } 
