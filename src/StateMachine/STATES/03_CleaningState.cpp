@@ -149,8 +149,11 @@ void CleaningState::update() {
                 }
                 
                 if (!cleanupButtonPressed && paintGunActive) {
-                    // Button released and paint gun active - turn off paint gun and start return sequence
-                    Serial.println("CleaningState: Cleanup button released - deactivating paint gun and returning home");
+                    // Button released and paint gun active - start servo rotation immediately, then turn off paint gun and start return sequence
+                    Serial.println("CleaningState: Cleanup button released - starting servo rotation to idle angle immediately");
+                    myServo.setAngle(180); // Start servo rotation to idle angle BEFORE any other movement
+                    
+                    Serial.println("CleaningState: Deactivating paint gun and returning home");
                     paintGun_OFF();
                     paintGunActive = false;
                     cleaningStep = 3; // Move to return home step
@@ -174,6 +177,7 @@ void CleaningState::update() {
                 Serial.println("CleaningState: Step 3 - Returning to home position");
                 long cleaningX = 0.8 * STEPS_PER_INCH_XYZ;
                 long cleaningY = 4.1 * STEPS_PER_INCH_XYZ;
+                
                 
                 // Retract the paint gun
                 moveToXYZ(cleaningX, CLEANING_X_SPEED, cleaningY, CLEANING_Y_SPEED, 0, CLEANING_Z_SPEED);
@@ -214,9 +218,7 @@ void CleaningState::update() {
 void CleaningState::exit() {
     Serial.println("Exiting Cleaning State");
     
-    // Start servo rotation to idle angle immediately
-    Serial.println("CleaningState: Starting servo rotation to idle angle");
-    myServo.setAngle(0); // Set to idle angle immediately
+    // Servo rotation now happens earlier when button is released, so no need to do it here
     
     // Ensure paint gun and pressure pot are off when exiting
     if (paintGunActive) {
