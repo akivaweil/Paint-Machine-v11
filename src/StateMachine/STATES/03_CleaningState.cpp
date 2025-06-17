@@ -110,6 +110,12 @@ void CleaningState::update() {
                 long cleaningZ = -3.0 * STEPS_PER_INCH_XYZ;
                 moveToXYZ(cleaningX, CLEANING_X_SPEED, cleaningY, CLEANING_Y_SPEED, cleaningZ, CLEANING_Z_SPEED);
                 atCleanPosition = true;
+                
+                // Automatically turn on paint gun when reaching clean position
+                Serial.println("CleaningState: Reached clean position - automatically activating paint gun");
+                paintGun_ON();
+                paintGunActive = true;
+                
                 cleaningStep = 2;
             }
             break;
@@ -118,26 +124,31 @@ void CleaningState::update() {
             {
                 bool cleanupButtonPressed = (digitalRead(ACTION_BUTTON_CENTER) == HIGH);
                 
-                if (cleanupButtonPressed && !paintGunActive) {
-                    // Button pressed and paint gun not active - turn on paint gun
-                    Serial.println("CleaningState: Cleanup button pressed - activating paint gun");
-                    paintGun_ON();
-                    paintGunActive = true;
-                } else if (!cleanupButtonPressed && paintGunActive) {
+                // Debug output to see button state
+                static bool lastButtonState = false;
+                if (cleanupButtonPressed != lastButtonState) {
+                    Serial.printf("CleaningState: Button state changed to %s\n", cleanupButtonPressed ? "PRESSED" : "RELEASED");
+                    lastButtonState = cleanupButtonPressed;
+                }
+                
+                if (!cleanupButtonPressed && paintGunActive) {
                     // Button released and paint gun active - turn off paint gun and start return sequence
                     Serial.println("CleaningState: Cleanup button released - deactivating paint gun and returning home");
                     paintGun_OFF();
                     paintGunActive = false;
                     cleaningStep = 3; // Move to return home step
-                } else if (!cleanupButtonPressed && !paintGunActive && shortMode) {
-                    // For short mode, run for the specified duration if button not held
-                    Serial.println("CleaningState: Short mode - running paint gun for specified duration");
-                    paintGun_ON();
-                    unsigned long paintGunOnDelay = SHORT_PAINT_GUN_ON_DELAY;
-                    delay(paintGunOnDelay);
-                    paintGun_OFF();
+                } else if (cleanupButtonPressed && paintGunActive) {
+                    // Button is being held and paint gun is active - keep spraying
+                    Serial.println("CleaningState: Button held - maintaining paint gun ON");
+                } else if (!cleanupButtonPressed && !paintGunActive) {
+                    // Button not pressed and paint gun not active - this shouldn't happen in normal flow
+                    // but handle it for safety
+                    Serial.println("CleaningState: Button not pressed and paint gun off - transitioning to return home");
                     cleaningStep = 3; // Move to return home step
                 }
+                
+                // Add a small delay to prevent excessive polling
+                delay(50); // Increased delay for better responsiveness
             }
             break;
             
