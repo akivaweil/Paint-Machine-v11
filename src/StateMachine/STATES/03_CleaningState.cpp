@@ -43,7 +43,7 @@ int cleaningStep = 0;
 // Movement speed settings for cleaning
 const unsigned int CLEANING_X_SPEED = 2000; // Customize these values as needed
 const unsigned int CLEANING_Y_SPEED = 2000;
-const unsigned int CLEANING_Z_SPEED = 1000;
+const unsigned int CLEANING_Z_SPEED = 2000;
 
 // Durations for cleaning steps (milliseconds)
 const unsigned long NORMAL_PRESSURE_POT_INIT_DELAY = 100;
@@ -124,7 +124,7 @@ void CleaningState::update() {
                 Serial.println("CleaningState: Step 1 - Moving to clean station");
                 long cleaningX = 0.8 * STEPS_PER_INCH_XYZ;
                 long cleaningY = 4.1 * STEPS_PER_INCH_XYZ;
-                long cleaningZ = -3.0 * STEPS_PER_INCH_XYZ;
+                long cleaningZ = -3.25 * STEPS_PER_INCH_XYZ;
                 moveToXYZ(cleaningX, CLEANING_X_SPEED, cleaningY, CLEANING_Y_SPEED, cleaningZ, CLEANING_Z_SPEED);
                 atCleanPosition = true;
                 

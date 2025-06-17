@@ -13,7 +13,7 @@
 // --- Homing Accelerations ---
 #define HOMING_ACCEL_X 5000          // X Homing acceleration
 #define HOMING_ACCEL_Y 5000           // Y Homing acceleration
-#define HOMING_ACCEL_Z 5000            // Z Homing acceleration
+#define HOMING_ACCEL_Z 10000            // Z Homing acceleration
 #define HOMING_MOVE_AWAY_ACCEL_X 1000  // X Homing move-away acceleration
 #define HOMING_MOVE_AWAY_ACCEL_Y 1000 // Y Homing move-away acceleration
 #define HOMING_MOVE_AWAY_ACCEL_Z 1000 // Z Homing move-away acceleration
