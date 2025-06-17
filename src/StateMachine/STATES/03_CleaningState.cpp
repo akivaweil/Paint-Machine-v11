@@ -174,14 +174,9 @@ void CleaningState::update() {
             
         case 3: // Return to home position
             {
-                Serial.println("CleaningState: Step 3 - Returning to home position");
-                long cleaningX = 0.8 * STEPS_PER_INCH_XYZ;
-                long cleaningY = 4.1 * STEPS_PER_INCH_XYZ;
+                Serial.println("CleaningState: Step 3 - Returning to home position simultaneously");
                 
-                
-                // Retract the paint gun
-                moveToXYZ(cleaningX, CLEANING_X_SPEED, cleaningY, CLEANING_Y_SPEED, 0, CLEANING_Z_SPEED);
-                // Move back to home position
+                // Move all axes simultaneously to home position (0, 0, 0)
                 moveToXYZ(0, CLEANING_X_SPEED, 0, CLEANING_Y_SPEED, 0, CLEANING_Z_SPEED);
                 
                 Serial.println("Cleaning Cycle Complete.");
