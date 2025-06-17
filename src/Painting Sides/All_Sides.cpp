@@ -51,8 +51,7 @@ const float LOADING_BAR_X_END = 0.0f;
 
 // Helper function to prepare for the next painting sequence
 void _prepareForPaintingSequence() {
-    myServo.setAngle(0);
-    Serial.println("Reset servo angle to 0 degrees before painting sequence");
+    // Removed hardcoded servo angle reset - let each side set its own angle from dashboard settings
     
     paintGun_OFF();
     Serial.println("Ensured paint gun is off before starting painting sequence");

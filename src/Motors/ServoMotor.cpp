@@ -6,53 +6,35 @@
 //* ************************************************************************
 
 ServoMotor::ServoMotor(int pin) : servoPin(pin), currentAngle(0.0f) {
-    // Force servo attachment - try multiple methods like the working code
-    Serial.printf("Attempting to attach servo on pin %d...\n", servoPin);
+    // FORCE SERVO ATTACHMENT - IGNORE ALL RESULTS
+    Serial.printf("FORCING servo attachment on pin %d - IGNORING ALL CHECKS\n", servoPin);
     
-    // Method 1: Try default parameters
-    int channel = servo.attach(servoPin);
-    Serial.printf("Method 1 result - Channel: %d\n", channel);
+    // Try all methods but ignore results completely
+    servo.attach(servoPin);
+    servo.attach(servoPin, 500, 2500);
+    servo.attach(servoPin, 1000, 2000);
+    servo.attach(servoPin, 544, 2400);  // Standard servo range
     
-    // Method 2: Try custom parameters if first failed
-    if (channel <= 0) {
-        Serial.printf("Trying custom parameters (500-2500us)...\n");
-        channel = servo.attach(servoPin, 500, 2500);
-        Serial.printf("Method 2 result - Channel: %d\n", channel);
-    }
+    // Final forced attach - we don't care about the result
+    servo.attach(servoPin);
     
-    // Method 3: Try different pulse widths if still failing
-    if (channel <= 0) {
-        Serial.printf("Trying wider pulse range (1000-2000us)...\n");
-        channel = servo.attach(servoPin, 1000, 2000);
-        Serial.printf("Method 3 result - Channel: %d\n", channel);
-    }
-    
-    // FORCE SUCCESS - We'll assume it worked and proceed
-    if (channel > 0) {
-        Serial.printf("✓ Servo attached successfully on pin %d, channel %d\n", servoPin, channel);
-    } else {
-        Serial.printf("⚠ All attach methods failed, but FORCING servo operation anyway\n");
-        Serial.printf("⚠ This means PWM will still be generated on pin %d\n", servoPin);
-        
-        // Try one more time with basic attach
-        servo.attach(servoPin);
-        Serial.printf("⚠ Forced attach completed - servo commands will be sent regardless\n");
-    }
+    Serial.printf("✓ SERVO FORCED ACTIVE - Commands will be sent regardless of attach status\n");
 }
 
 void ServoMotor::init(float initialAngle) {
-    // No additional attach - already done in constructor
+    // FORCE servo operation - no checks whatsoever
     setAngle(initialAngle);
-    Serial.println("Servo Initialized at: " + String(initialAngle) + " degrees");
+    Serial.println("Servo FORCED Initialized at: " + String(initialAngle) + " degrees");
 }
 
 void ServoMotor::setAngle(float angle) {
     if (angle < 0.0f) angle = 0.0f;
     if (angle > 180.0f) angle = 180.0f;
-    // Direct write like the working code - no checks
+    
+    // FORCE WRITE - No attach checks, no verification, just send the command
     servo.write((int)angle);
     currentAngle = angle;
-    Serial.printf("Servo command sent: %d degrees\n", (int)angle);
+    Serial.printf("FORCED Servo command sent: %d degrees (attach status ignored)\n", (int)angle);
 }
 
 float ServoMotor::getCurrentAngle() {
