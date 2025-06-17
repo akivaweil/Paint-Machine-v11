@@ -100,9 +100,9 @@ void Side1State::performCurrentStep() {
         case S1_SET_SERVO_ANGLE:
             Serial.println("Side1State: Setting servo angle");
             {
-                int servoAngle = paintingSettings.getServoAngleSide1();
+                float servoAngle = paintingSettings.getServoAngleSide1();
                 myServo.setAngle(servoAngle);
-                Serial.println("Servo set to: " + String(servoAngle) + " degrees for Side 1");
+                Serial.printf("Servo set to: %.1f degrees for Side 1\n", servoAngle);
             }
             transitionToNextStep();
             break;

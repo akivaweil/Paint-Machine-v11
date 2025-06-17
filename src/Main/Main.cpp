@@ -10,6 +10,7 @@
 #include "storage/PaintingSettings.h"
 #include "motors/Rotation_Motor.h" // For rotation stepper
 #include "hardware/controlPanel_Functions.h" // For control panel buttons
+#include "config/Pins_Definitions.h" // For servo pin definition
 
 // Include headers for functions called in loop
 #include "web/Web_Dashboard_Commands.h" // For runDashboardServer()
@@ -21,9 +22,8 @@ extern bool webSocketServerStarted;
 // Global variables
 unsigned long lastDebounceTime = 0;
 const unsigned long debounceDelay = 10;
-const int servoPin = 4;
 
-ServoMotor myServo(servoPin);
+ServoMotor myServo(SERVO_PIN); // Use defined pin constant instead of hardcoded value
 extern PaintingSettings paintingSettings;
 
 // State machine

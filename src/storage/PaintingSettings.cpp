@@ -195,11 +195,11 @@ void PaintingSettings::loadSettings() {
     // Load Post-Print Pause
     postPrintPause = persistence.loadInt(KEY_POST_PRINT_PAUSE "val", 0); // Use a simple key like "pp_val"
 
-    // Servo Angles
-    servoAngleSide1 = persistence.loadInt(KEY_SERVO_ANGLE SIDE_1, 35); // Default 35 if not found
-    servoAngleSide2 = persistence.loadInt(KEY_SERVO_ANGLE SIDE_2, 35);
-    servoAngleSide3 = persistence.loadInt(KEY_SERVO_ANGLE SIDE_3, 35);
-    servoAngleSide4 = persistence.loadInt(KEY_SERVO_ANGLE SIDE_4, 35);
+    // Servo Angles - Using float for precise servo control
+    servoAngleSide1 = persistence.loadFloat(KEY_SERVO_ANGLE SIDE_1, 35.0f); // Default 35.0 if not found
+    servoAngleSide2 = persistence.loadFloat(KEY_SERVO_ANGLE SIDE_2, 35.0f);
+    servoAngleSide3 = persistence.loadFloat(KEY_SERVO_ANGLE SIDE_3, 35.0f);
+    servoAngleSide4 = persistence.loadFloat(KEY_SERVO_ANGLE SIDE_4, 35.0f);
 
     persistence.endTransaction(); // End read-only transaction
 }
@@ -253,10 +253,10 @@ void PaintingSettings::saveSettings() {
     persistence.saveFloat(KEY_SHIFT_X SIDE_4, side4ShiftX);
 
     // Save Servo Angles
-    persistence.saveInt(KEY_SERVO_ANGLE SIDE_1, servoAngleSide1);
-    persistence.saveInt(KEY_SERVO_ANGLE SIDE_2, servoAngleSide2);
-    persistence.saveInt(KEY_SERVO_ANGLE SIDE_3, servoAngleSide3);
-    persistence.saveInt(KEY_SERVO_ANGLE SIDE_4, servoAngleSide4);
+    persistence.saveFloat(KEY_SERVO_ANGLE SIDE_1, servoAngleSide1);
+    persistence.saveFloat(KEY_SERVO_ANGLE SIDE_2, servoAngleSide2);
+    persistence.saveFloat(KEY_SERVO_ANGLE SIDE_3, servoAngleSide3);
+    persistence.saveFloat(KEY_SERVO_ANGLE SIDE_4, servoAngleSide4);
 
     // Save Post-Print Pause
     persistence.saveInt(KEY_POST_PRINT_PAUSE "val", postPrintPause);
@@ -312,10 +312,10 @@ void PaintingSettings::resetToDefaults() {
     side4ShiftX = SIDE4_SHIFT_X;
 
     // Reset Servo Angles
-    servoAngleSide1 = 35;
-    servoAngleSide2 = 35;
-    servoAngleSide3 = 35;
-    servoAngleSide4 = 35;
+    servoAngleSide1 = 35.0f;
+    servoAngleSide2 = 35.0f;
+    servoAngleSide3 = 35.0f;
+    servoAngleSide4 = 35.0f;
 
     postPrintPause = 0; // Reset post-print pause to 0 (or defined default)
 }
@@ -369,10 +369,10 @@ float PaintingSettings::getSide4ShiftX() { return side4ShiftX; }
 int PaintingSettings::getPostPrintPause() { return postPrintPause; }
 
 // Servo Angle Getters
-int PaintingSettings::getServoAngleSide1() { return servoAngleSide1; }
-int PaintingSettings::getServoAngleSide2() { return servoAngleSide2; }
-int PaintingSettings::getServoAngleSide3() { return servoAngleSide3; }
-int PaintingSettings::getServoAngleSide4() { return servoAngleSide4; }
+float PaintingSettings::getServoAngleSide1() { return servoAngleSide1; }
+float PaintingSettings::getServoAngleSide2() { return servoAngleSide2; }
+float PaintingSettings::getServoAngleSide3() { return servoAngleSide3; }
+float PaintingSettings::getServoAngleSide4() { return servoAngleSide4; }
 
 // --- Setters ---
 // Note: Setters only update the value in memory. Call saveSettings() to persist.
@@ -424,7 +424,7 @@ void PaintingSettings::setSide4ShiftX(float value) { side4ShiftX = value; }
 void PaintingSettings::setPostPrintPause(int value) { postPrintPause = value; }
 
 // Servo Angle Setters
-void PaintingSettings::setServoAngleSide1(int value) { servoAngleSide1 = value; }
-void PaintingSettings::setServoAngleSide2(int value) { servoAngleSide2 = value; }
-void PaintingSettings::setServoAngleSide3(int value) { servoAngleSide3 = value; }
-void PaintingSettings::setServoAngleSide4(int value) { servoAngleSide4 = value; } 
+void PaintingSettings::setServoAngleSide1(float value) { servoAngleSide1 = value; }
+void PaintingSettings::setServoAngleSide2(float value) { servoAngleSide2 = value; }
+void PaintingSettings::setServoAngleSide3(float value) { servoAngleSide3 = value; }
+void PaintingSettings::setServoAngleSide4(float value) { servoAngleSide4 = value; } 

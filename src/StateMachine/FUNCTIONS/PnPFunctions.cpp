@@ -13,6 +13,7 @@
 #include "hardware/GlobalDebouncers.h"
 #include "settings/pnp.h"
 #include "system/machine_state.h"  // For physicalHomeButtonPressed
+#include "hardware/controlPanel_Functions.h"  // For paintAllSidesTwice function
 
 // ===========================================================================
 //                              PNP CONFIGURATION  
@@ -351,6 +352,11 @@ bool pnp_processSinglePosition(int position) {
     }
     
     Serial.printf("PnP: Position %d complete\n", position);
+    
+    // Automatically start painting all sides twice after PnP completion
+    Serial.println("PnP: Starting automatic painting sequence (all sides twice)...");
+    paintAllSidesTwice();
+    
     return true;
 }
 
@@ -410,6 +416,10 @@ void startPnPFullCycle() {
     }
     
     Serial.println("PnP: Full cycle completed!");
+    
+    // Automatically start painting all sides twice after PnP completion
+    Serial.println("PnP: Starting automatic painting sequence (all sides twice)...");
+    paintAllSidesTwice();
 }
 
 // Individual position functions - now just simple wrappers
