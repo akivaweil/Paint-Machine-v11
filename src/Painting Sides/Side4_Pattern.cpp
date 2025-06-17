@@ -112,8 +112,19 @@ void Side4State::performCurrentStep() {
             Serial.println("Side4State: Setting servo angle");
             {
                 float servoAngle = paintingSettings.getServoAngleSide4();
+                float currentAngle = myServo.getCurrentAngle();
+                Serial.printf("Side4State: Current servo angle: %.1f degrees\n", currentAngle);
+                Serial.printf("Side4State: Target servo angle from settings: %.1f degrees\n", servoAngle);
+                Serial.printf("Side4State: Angle difference: %.1f degrees\n", abs(servoAngle - currentAngle));
+                
                 myServo.setAngle(servoAngle);
-                Serial.printf("Servo set to: %.1f degrees for Side 4\n", servoAngle);
+                Serial.printf("Side4State: Servo command sent to: %.1f degrees for Side 4\n", servoAngle);
+                
+                // Add a delay to allow servo movement
+                delay(1000);
+                
+                float newAngle = myServo.getCurrentAngle();
+                Serial.printf("Side4State: Servo angle after command: %.1f degrees\n", newAngle);
             }
             transitionToNextStep();
             break;
@@ -197,7 +208,22 @@ void Side4State::performCurrentStep() {
             
         case S4_SET_SERVO_FOR_FINAL_X:
             Serial.println("Side4State: Setting servo to 85° and Z to -1.75\"");
-            myServo.setAngle(85);
+            {
+                float currentAngle = myServo.getCurrentAngle();
+                Serial.printf("Side4State: Current servo angle before 85° command: %.1f degrees\n", currentAngle);
+                Serial.printf("Side4State: Target servo angle: 85.0 degrees (hardcoded)\n");
+                Serial.printf("Side4State: Angle difference: %.1f degrees\n", abs(85.0f - currentAngle));
+                
+                myServo.setAngle(85);
+                Serial.printf("Side4State: Servo command sent to: 85.0 degrees\n");
+                
+                // Add delay for servo movement
+                delay(1000);
+                
+                float newAngle = myServo.getCurrentAngle();
+                Serial.printf("Side4State: Servo angle after 85° command: %.1f degrees\n", newAngle);
+            }
+            
             zPos = (long)(-1.75f * STEPS_PER_INCH_XYZ);
             moveToXYZ(currentX, DEFAULT_X_SPEED, currentY, DEFAULT_Y_SPEED, zPos, DEFAULT_Z_SPEED);
             transitionToNextStep();
