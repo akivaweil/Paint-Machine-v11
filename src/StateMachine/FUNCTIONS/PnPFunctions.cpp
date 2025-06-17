@@ -174,6 +174,16 @@ void pnp_initialize() {
 bool pnp_waitForSensor(const char* message = "Waiting for cycle sensor...") {
     Serial.println(message);
     
+    // First check if sensor is already active (HIGH) - if so, proceed immediately
+    g_pnpCycleSensorDebouncer.update();
+    if (g_pnpCycleSensorDebouncer.read() == HIGH) {
+        Serial.println("PnP: Sensor is already active (HIGH) - proceeding with cycle immediately");
+        return true;
+    }
+    
+    // If sensor is not active, wait for it to become active (go HIGH)
+    Serial.println("PnP: Sensor not active, waiting for activation...");
+    
     const unsigned long SENSOR_TIMEOUT_MS = 30000; // 30 second timeout
     unsigned long startTime = millis();
     
@@ -192,9 +202,9 @@ bool pnp_waitForSensor(const char* message = "Waiting for cycle sensor...") {
         
         g_pnpCycleSensorDebouncer.update();
         
-        // Run cycle immediately when sensor reads LOW (active)
-        if (g_pnpCycleSensorDebouncer.read() == LOW) {
-            Serial.println("PnP: Sensor is active (LOW) - proceeding with cycle");
+        // Run cycle when sensor reads HIGH (active)
+        if (g_pnpCycleSensorDebouncer.read() == HIGH) {
+            Serial.println("PnP: Sensor activated (HIGH) - proceeding with cycle");
             return true;
         }
         
@@ -202,7 +212,7 @@ bool pnp_waitForSensor(const char* message = "Waiting for cycle sensor...") {
         static unsigned long lastPrint = 0;
         if (millis() - lastPrint > 2000) {
             unsigned long elapsed = (millis() - startTime) / 1000;
-            Serial.printf("PnP: Waiting for sensor (%lu/%lu sec) - Current value: %d (need LOW)\n", 
+            Serial.printf("PnP: Waiting for sensor (%lu/%lu sec) - Current value: %d (need HIGH)\n", 
                          elapsed, SENSOR_TIMEOUT_MS/1000, g_pnpCycleSensorDebouncer.read());
             lastPrint = millis();
         }

@@ -12,6 +12,7 @@
  */
 void cylinderDown() {
     digitalWrite(PICK_CYLINDER_PIN, HIGH);
+    Serial.println("Cylinder: EXTENDING (DOWN) - Pin set HIGH");
 }
 
 /**
@@ -21,4 +22,5 @@ void cylinderDown() {
  */
 void cylinderUp() {
     digitalWrite(PICK_CYLINDER_PIN, LOW);
+    Serial.println("Cylinder: RETRACTING (UP) - Pin set LOW");
 } 

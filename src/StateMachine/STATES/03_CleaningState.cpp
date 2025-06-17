@@ -43,7 +43,7 @@ int cleaningStep = 0;
 // Movement speed settings for cleaning
 const unsigned int CLEANING_X_SPEED = 2000; // Customize these values as needed
 const unsigned int CLEANING_Y_SPEED = 2000;
-const unsigned int CLEANING_Z_SPEED = 2000;
+const unsigned int CLEANING_Z_SPEED = 1500;
 
 // Durations for cleaning steps (milliseconds)
 const unsigned long NORMAL_PRESSURE_POT_INIT_DELAY = 100;
