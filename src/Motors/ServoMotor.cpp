@@ -4,8 +4,6 @@
 //* ************************************************************************
 //* **************************** SERVO MOTOR *******************************
 //* ************************************************************************
-// ESP32-S3 Servo Motor Implementation with proper PWM configuration
-// Provides smooth servo control with float precision and bounds checking
 
 ServoMotor::ServoMotor(int pin) : servoPin(pin), currentAngle(0.0f) {
     // Force servo attachment - try multiple methods like the working code

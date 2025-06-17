@@ -11,7 +11,6 @@
 // #include "hardware/Brush_Functions.h" // File does not exist
 #include "motors/Rotation_Motor.h" // Added for rotateToAngle
 #include "settings/painting.h"   // Added for SIDE4_ROTATION_ANGLE
-#include "config/Pins_Definitions.h" // Added for button pin
 
 // External variable for pressure pot state
 extern bool isPressurePot_ON;
@@ -30,10 +29,6 @@ bool cleaningInProgress = false;
 bool cleaningCompleted = false;
 unsigned long cleaningStartTime = 0;
 int cleaningStep = 0;
-
-// Hold-to-spray variables
-bool hasMovedToCleaningPosition = false;
-bool isSprayingActive = false;
 
 // Movement speed settings for cleaning
 const unsigned int CLEANING_X_SPEED = 2000; // Customize these values as needed
@@ -61,111 +56,107 @@ void CleaningState::setShortMode(bool mode) {
 }
 
 void CleaningState::enter() {
-    Serial.println("Entering Hold-to-Spray Cleaning State");
+    Serial.print("Entering Cleaning State (");
+    Serial.print(shortMode ? "SHORT" : "NORMAL");
+    Serial.println(" mode)");
     
     //! Set Servo to cleaning angle
     myServo.setAngle(35);
     Serial.println("Servo set to cleaning angle (35 degrees)");
 
-    //! Turn on pressure pot
-    PressurePot_ON();
-    delay(100); // Brief delay for pressure buildup
+    //! Rotate to Side 4 position concurrently with cleaning prep
+    // This is called here assuming 'paintAllSides' will always start with Side 4 after cleaning.
+    // If cleaning is used for other purposes, this might need more sophisticated logic
+    // to determine which angle to rotate to, or if rotation is needed at all.
+    if (stateMachine && stateMachine->isTransitioningToPaintAllSides()) { // Hypothetical check
+        Serial.println("CleaningState: Initiating rotation to Side 4 angle during cleaning prep.");
+        rotateToAngle(SIDE4_ROTATION_ANGLE); // Rotate for the first side of 'paintAllSides'
+    } else {
+        Serial.println("CleaningState: Not rotating, as not transitioning to Paint All Sides or stateMachine unavailable.");
+    }
     
     // Reset cleaning state variables
     _isCleaning = true;
     _cleaningComplete = false;
-    hasMovedToCleaningPosition = false;
-    isSprayingActive = false;
-    cleaningStartTime = millis(); // Initialize start time for timeout
-    Serial.println("Hold-to-spray cleaning mode activated - hold center button to spray");
+    Serial.println("Cleaning process initiated...");
+    // DO NOT execute blocking cycle here
 }
 
 void CleaningState::update() {
-    if (!_isCleaning || _cleaningComplete) {
-        return;
-    }
-    
-    // Check if center action button is currently pressed (Active HIGH)
-    bool centerButtonPressed = digitalRead(ACTION_BUTTON_CENTER);
-    
-    //! Step 1: Move to cleaning position on first button press
-    if (centerButtonPressed && !hasMovedToCleaningPosition) {
-        Serial.println("Moving to cleaning position...");
+    // If cleaning is active and not yet complete
+    if (_isCleaning && !_cleaningComplete) {
+        Serial.println("Executing Cleaning Cycle...");
+        
+        unsigned long pressurePotInitDelay = shortMode ? SHORT_PRESSURE_POT_INIT_DELAY : NORMAL_PRESSURE_POT_INIT_DELAY;
+        unsigned long paintGunOnDelay = shortMode ? SHORT_PAINT_GUN_ON_DELAY : NORMAL_PAINT_GUN_ON_DELAY;
+
+        //! Step 1: Turn on pressure pot and initialize
+        PressurePot_ON();
+        delay(pressurePotInitDelay); 
+
+        //! Step 3: Move to clean station
         long cleaningX = 0.8 * STEPS_PER_INCH_XYZ;
-        long cleaningY = 4.1 * STEPS_PER_INCH_XYZ;
+        long cleaningY = 4.1* STEPS_PER_INCH_XYZ;
         long cleaningZ = -3.0 * STEPS_PER_INCH_XYZ;
         moveToXYZ(cleaningX, CLEANING_X_SPEED, cleaningY, CLEANING_Y_SPEED, cleaningZ, CLEANING_Z_SPEED);
-        hasMovedToCleaningPosition = true;
-        Serial.println("Reached cleaning position - ready to spray");
-    }
-    
-    //! Step 2: Control paint gun based on button state
-    if (hasMovedToCleaningPosition) {
-        if (centerButtonPressed && !isSprayingActive) {
-            // Button pressed and not currently spraying - start spraying
-            Serial.println("CENTER BUTTON PRESSED - Starting spray");
-            paintGun_ON();
-            isSprayingActive = true;
-        }
-        else if (!centerButtonPressed && isSprayingActive) {
-            // Button released and currently spraying - stop spraying
-            Serial.println("CENTER BUTTON RELEASED - Stopping spray");
-            paintGun_OFF();
-            isSprayingActive = false;
-            
-            // Button released - start return home sequence
-            Serial.println("Button released - returning to home position...");
-            
-            //! Step 3: Return to home position
-            long cleaningX = 0.8 * STEPS_PER_INCH_XYZ;
-            long cleaningY = 4.1 * STEPS_PER_INCH_XYZ;
-            
-            // Retract the paint gun (Z to 0)
-            moveToXYZ(cleaningX, CLEANING_X_SPEED, cleaningY, CLEANING_Y_SPEED, 0, CLEANING_Z_SPEED);
-            // Move back to home position (X,Y to 0)
-            moveToXYZ(0, CLEANING_X_SPEED, 0, CLEANING_Y_SPEED, 0, CLEANING_Z_SPEED);
-            
-            Serial.println("Hold-to-spray cleaning cycle complete");
-            _cleaningComplete = true;
-            _isCleaning = false;
-        }
-    }
-    
-    // If no button press within reasonable time and haven't moved, exit
-    if (!hasMovedToCleaningPosition && (millis() - cleaningStartTime) > 5000) {
-        Serial.println("No button press detected - exiting cleaning mode");
+        
+        //! Step 4: Activate paint gun for specified duration
+        Serial.println("Activating paint gun...");
+        paintGun_ON();
+        delay(paintGunOnDelay);
+        paintGun_OFF();
+        
+        //! Step 5: Return to home position
+        Serial.println("Returning to home position...");
+        // Retract the paint gun
+        moveToXYZ(cleaningX, CLEANING_X_SPEED, cleaningY, CLEANING_Y_SPEED, 0, CLEANING_Z_SPEED);
+        // Move back to home position
+        moveToXYZ(0, CLEANING_X_SPEED, 0, CLEANING_Y_SPEED, 0, CLEANING_Z_SPEED);
+        
+        //! Step 6: Complete cleaning cycle
+        Serial.println("Cleaning Cycle Complete.");
+        
+        // Mark cleaning as complete
         _cleaningComplete = true;
         _isCleaning = false;
+    }
+    
+    // If cleaning is marked as complete, transition
+    if (_cleaningComplete) {
+        State* overrideState = nullptr;
+        if (stateMachine) { // Check stateMachine first
+            overrideState = stateMachine->getNextStateOverrideAndClear();
+        }
+
+        if (overrideState) {
+            Serial.println("CleaningState: Short clean complete. Transitioning to override state.");
+            // shortMode = false; // Reset mode before leaving - already in exit()
+            if(stateMachine) stateMachine->changeState(overrideState);
+        } else {
+            Serial.println("CleaningState: Normal clean complete. Transitioning to Idle State.");
+            // shortMode = false; // Reset mode before leaving - already in exit()
+            if (stateMachine) {
+                 stateMachine->changeState(stateMachine->getIdleState());
+            } else {
+                Serial.println("ERROR: StateMachine pointer null. Cannot transition to Idle.");
+            }
+        }
+        _cleaningComplete = false; // Reset for next entry
+        // shortMode = false; // Moved to exit() for robustness
     }
 }
 
 void CleaningState::exit() {
-    Serial.println("Exiting Hold-to-Spray Cleaning State");
-    
-    // Ensure paint gun is off
-    if (isSprayingActive) {
-        paintGun_OFF();
-        isSprayingActive = false;
-    }
-    
-    // Ensure pressure pot is off when exiting
+    Serial.println("Exiting Cleaning State");
+    // Ensure pressure pot is off when exiting, regardless of cycle completion state
     PressurePot_OFF(); 
-    
-    // Reset all flags
-    _isCleaning = false;
+    _isCleaning = false; // Ensure flags are reset
     _cleaningComplete = false;
-    hasMovedToCleaningPosition = false;
-    isSprayingActive = false;
-    shortMode = false;
-    
-    // Transition back to idle state
-    if (stateMachine) {
-        stateMachine->changeState(stateMachine->getIdleState());
-    }
+    shortMode = false; // Ensure mode is reset on any exit
 }
 
 const char* CleaningState::getName() const {
-    return "HOLD_TO_SPRAY_CLEANING";
+    return "CLEANING";
 }
 
 // REMOVED Banner comment from the end of the file to avoid parsing issues.
