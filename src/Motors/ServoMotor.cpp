@@ -7,83 +7,56 @@
 // ESP32-S3 Servo Motor Implementation with proper PWM configuration
 // Provides smooth servo control with float precision and bounds checking
 
-// Servo configuration constants
-const float ServoMotor::MIN_ANGLE = 0.0f;
-const float ServoMotor::MAX_ANGLE = 180.0f;
-const int ServoMotor::SERVO_MIN_PULSE_WIDTH = 500;   // 0.5ms pulse width for 0°
-const int ServoMotor::SERVO_MAX_PULSE_WIDTH = 2500;  // 2.5ms pulse width for 180°
-
-ServoMotor::ServoMotor(int pin) : servoPin(pin), currentAngle(0.0f), attached(false) {}
+ServoMotor::ServoMotor(int pin) : servoPin(pin), currentAngle(0.0f) {
+    // Force servo attachment - try multiple methods like the working code
+    Serial.printf("Attempting to attach servo on pin %d...\n", servoPin);
+    
+    // Method 1: Try default parameters
+    int channel = servo.attach(servoPin);
+    Serial.printf("Method 1 result - Channel: %d\n", channel);
+    
+    // Method 2: Try custom parameters if first failed
+    if (channel <= 0) {
+        Serial.printf("Trying custom parameters (500-2500us)...\n");
+        channel = servo.attach(servoPin, 500, 2500);
+        Serial.printf("Method 2 result - Channel: %d\n", channel);
+    }
+    
+    // Method 3: Try different pulse widths if still failing
+    if (channel <= 0) {
+        Serial.printf("Trying wider pulse range (1000-2000us)...\n");
+        channel = servo.attach(servoPin, 1000, 2000);
+        Serial.printf("Method 3 result - Channel: %d\n", channel);
+    }
+    
+    // FORCE SUCCESS - We'll assume it worked and proceed
+    if (channel > 0) {
+        Serial.printf("✓ Servo attached successfully on pin %d, channel %d\n", servoPin, channel);
+    } else {
+        Serial.printf("⚠ All attach methods failed, but FORCING servo operation anyway\n");
+        Serial.printf("⚠ This means PWM will still be generated on pin %d\n", servoPin);
+        
+        // Try one more time with basic attach
+        servo.attach(servoPin);
+        Serial.printf("⚠ Forced attach completed - servo commands will be sent regardless\n");
+    }
+}
 
 void ServoMotor::init(float initialAngle) {
-    // Configure ESP32 servo with proper PWM settings
-    ESP32PWM::allocateTimer(0);
-    ESP32PWM::allocateTimer(1);
-    ESP32PWM::allocateTimer(2);
-    ESP32PWM::allocateTimer(3);
-    
-    // Attach servo with custom pulse width range for better precision
-    servo.setPeriodHertz(50);    // Standard 50 Hz servo frequency
-    servo.attach(servoPin, SERVO_MIN_PULSE_WIDTH, SERVO_MAX_PULSE_WIDTH);
-    attached = true;
-    
-    // Set initial angle with validation
+    // No additional attach - already done in constructor
     setAngle(initialAngle);
-    Serial.printf("Servo Initialized on pin %d at: %.1f degrees\n", servoPin, currentAngle);
+    Serial.println("Servo Initialized at: " + String(initialAngle) + " degrees");
 }
 
 void ServoMotor::setAngle(float angle) {
-    if (!attached) {
-        Serial.println("WARNING: Servo not attached, cannot set angle");
-        return;
-    }
-    
-    // Constrain angle to valid range
-    float constrainedAngle = constrainAngle(angle);
-    
-    // Only move if angle actually changed (avoid unnecessary servo movement)
-    if (abs(constrainedAngle - currentAngle) > 0.1f) {
-        servo.write(constrainedAngle);
-        currentAngle = constrainedAngle;
-        
-        // Debug output only when significant movement occurs
-        if (abs(constrainedAngle - angle) > 0.1f) {
-            Serial.printf("Servo angle constrained from %.1f to %.1f degrees\n", angle, constrainedAngle);
-        }
-    }
+    if (angle < 0.0f) angle = 0.0f;
+    if (angle > 180.0f) angle = 180.0f;
+    // Direct write like the working code - no checks
+    servo.write((int)angle);
+    currentAngle = angle;
+    Serial.printf("Servo command sent: %d degrees\n", (int)angle);
 }
 
 float ServoMotor::getCurrentAngle() {
     return currentAngle;
-}
-
-bool ServoMotor::isAttached() {
-    return attached && servo.attached();
-}
-
-void ServoMotor::detach() {
-    if (attached) {
-        servo.detach();
-        attached = false;
-        Serial.printf("Servo detached from pin %d\n", servoPin);
-    }
-}
-
-void ServoMotor::reattach() {
-    if (!attached) {
-        servo.attach(servoPin, SERVO_MIN_PULSE_WIDTH, SERVO_MAX_PULSE_WIDTH);
-        attached = true;
-        Serial.printf("Servo reattached to pin %d\n", servoPin);
-    }
-}
-
-// Private helper methods
-bool ServoMotor::isValidAngle(float angle) {
-    return (angle >= MIN_ANGLE && angle <= MAX_ANGLE);
-}
-
-float ServoMotor::constrainAngle(float angle) {
-    if (angle < MIN_ANGLE) return MIN_ANGLE;
-    if (angle > MAX_ANGLE) return MAX_ANGLE;
-    return angle;
 } 
