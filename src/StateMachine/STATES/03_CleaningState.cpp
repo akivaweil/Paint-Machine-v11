@@ -12,6 +12,8 @@
 #include "motors/Rotation_Motor.h" // Added for rotateToAngle
 #include "settings/painting.h"   // Added for SIDE4_ROTATION_ANGLE
 #include "../../config/Pins_Definitions.h" // Added for button pin definitions
+#include "settings/homing.h" // Added for homing acceleration constants
+#include "settings/motion.h" // Added for default acceleration constants
 
 // External variable for pressure pot state
 extern bool isPressurePot_ON;
@@ -24,6 +26,13 @@ extern ServoMotor myServo;
 
 // Reference to the global state machine instance
 extern StateMachine* stateMachine;
+
+// External stepper motor instances
+extern FastAccelStepper *stepperX;
+extern FastAccelStepper *stepperY_Left;
+extern FastAccelStepper *stepperY_Right;
+extern FastAccelStepper *stepperZ;
+extern AccelStepper *rotationStepper;
 
 // Cleaning state variables
 bool cleaningInProgress = false;
@@ -87,6 +96,14 @@ void CleaningState::enter() {
     paintGunActive = false;
     Serial.println("Cleaning process initiated...");
     // DO NOT execute blocking cycle here
+
+    // Set homing acceleration for faster movement like homing state
+    Serial.println("CleaningState: Setting homing acceleration");
+    stepperX->setAcceleration(HOMING_ACCEL_X);
+    stepperY_Left->setAcceleration(HOMING_ACCEL_Y);
+    stepperY_Right->setAcceleration(HOMING_ACCEL_Y);
+    stepperZ->setAcceleration(HOMING_ACCEL_Z);
+    rotationStepper->setAcceleration(DEFAULT_ROT_ACCEL / 2); // Same as homing state
 }
 
 void CleaningState::update() {
@@ -207,6 +224,14 @@ void CleaningState::exit() {
     shortMode = false; // Ensure mode is reset on any exit
     cleaningStep = 0;
     atCleanPosition = false;
+
+    // Restore default acceleration like homing state does
+    Serial.println("CleaningState: Restoring default acceleration");
+    stepperX->setAcceleration(DEFAULT_X_ACCEL);
+    stepperY_Left->setAcceleration(DEFAULT_Y_ACCEL);
+    stepperY_Right->setAcceleration(DEFAULT_Y_ACCEL);
+    stepperZ->setAcceleration(DEFAULT_Z_ACCEL);
+    rotationStepper->setAcceleration(DEFAULT_ROT_ACCEL); // Restore rotation accel too
 }
 
 const char* CleaningState::getName() const {
