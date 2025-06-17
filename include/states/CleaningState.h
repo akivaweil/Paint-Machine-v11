@@ -17,6 +17,9 @@ private:
     bool _isCleaning;
     bool _cleaningComplete;
     bool shortMode; // Added for short cleaning cycle
+    int cleaningStep; // Current step in the cleaning process
+    bool atCleanPosition; // Whether we're at the cleaning position
+    bool paintGunActive; // Whether the paint gun is currently active
 };
 
 #endif // CLEANING_STATE_H 

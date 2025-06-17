@@ -11,6 +11,7 @@
 // #include "hardware/Brush_Functions.h" // File does not exist
 #include "motors/Rotation_Motor.h" // Added for rotateToAngle
 #include "settings/painting.h"   // Added for SIDE4_ROTATION_ANGLE
+#include "../../config/Pins_Definitions.h" // Added for button pin definitions
 
 // External variable for pressure pot state
 extern bool isPressurePot_ON;
@@ -44,7 +45,10 @@ const unsigned long SHORT_PAINT_GUN_ON_DELAY = 75; // Half of normal
 CleaningState::CleaningState() : 
     _isCleaning(false),
     _cleaningComplete(false),
-    shortMode(false) // Initialize shortMode to false
+    shortMode(false), // Initialize shortMode to false
+    cleaningStep(0),
+    atCleanPosition(false),
+    paintGunActive(false)
 {
     // Constructor implementation
 }
@@ -78,81 +82,120 @@ void CleaningState::enter() {
     // Reset cleaning state variables
     _isCleaning = true;
     _cleaningComplete = false;
+    cleaningStep = 0;
+    atCleanPosition = false;
+    paintGunActive = false;
     Serial.println("Cleaning process initiated...");
     // DO NOT execute blocking cycle here
 }
 
 void CleaningState::update() {
-    // If cleaning is active and not yet complete
-    if (_isCleaning && !_cleaningComplete) {
-        Serial.println("Executing Cleaning Cycle...");
-        
-        unsigned long pressurePotInitDelay = shortMode ? SHORT_PRESSURE_POT_INIT_DELAY : NORMAL_PRESSURE_POT_INIT_DELAY;
-        unsigned long paintGunOnDelay = shortMode ? SHORT_PAINT_GUN_ON_DELAY : NORMAL_PAINT_GUN_ON_DELAY;
-
-        //! Step 1: Turn on pressure pot and initialize
-        PressurePot_ON();
-        delay(pressurePotInitDelay); 
-
-        //! Step 3: Move to clean station
-        long cleaningX = 0.8 * STEPS_PER_INCH_XYZ;
-        long cleaningY = 4.1* STEPS_PER_INCH_XYZ;
-        long cleaningZ = -3.0 * STEPS_PER_INCH_XYZ;
-        moveToXYZ(cleaningX, CLEANING_X_SPEED, cleaningY, CLEANING_Y_SPEED, cleaningZ, CLEANING_Z_SPEED);
-        
-        //! Step 4: Activate paint gun for specified duration
-        Serial.println("Activating paint gun...");
-        paintGun_ON();
-        delay(paintGunOnDelay);
-        paintGun_OFF();
-        
-        //! Step 5: Return to home position
-        Serial.println("Returning to home position...");
-        // Retract the paint gun
-        moveToXYZ(cleaningX, CLEANING_X_SPEED, cleaningY, CLEANING_Y_SPEED, 0, CLEANING_Z_SPEED);
-        // Move back to home position
-        moveToXYZ(0, CLEANING_X_SPEED, 0, CLEANING_Y_SPEED, 0, CLEANING_Z_SPEED);
-        
-        //! Step 6: Complete cleaning cycle
-        Serial.println("Cleaning Cycle Complete.");
-        
-        // Mark cleaning as complete
-        _cleaningComplete = true;
-        _isCleaning = false;
-    }
-    
-    // If cleaning is marked as complete, transition
-    if (_cleaningComplete) {
-        State* overrideState = nullptr;
-        if (stateMachine) { // Check stateMachine first
-            overrideState = stateMachine->getNextStateOverrideAndClear();
-        }
-
-        if (overrideState) {
-            Serial.println("CleaningState: Short clean complete. Transitioning to override state.");
-            // shortMode = false; // Reset mode before leaving - already in exit()
-            if(stateMachine) stateMachine->changeState(overrideState);
-        } else {
-            Serial.println("CleaningState: Normal clean complete. Transitioning to Idle State.");
-            // shortMode = false; // Reset mode before leaving - already in exit()
-            if (stateMachine) {
-                 stateMachine->changeState(stateMachine->getIdleState());
-            } else {
-                Serial.println("ERROR: StateMachine pointer null. Cannot transition to Idle.");
+    // Handle different cleaning steps based on current step
+    switch (cleaningStep) {
+        case 0: // Initialize pressure pot
+            {
+                Serial.println("CleaningState: Step 0 - Initializing pressure pot");
+                PressurePot_ON();
+                unsigned long pressurePotInitDelay = shortMode ? SHORT_PRESSURE_POT_INIT_DELAY : NORMAL_PRESSURE_POT_INIT_DELAY;
+                delay(pressurePotInitDelay);
+                cleaningStep = 1;
             }
-        }
-        _cleaningComplete = false; // Reset for next entry
-        // shortMode = false; // Moved to exit() for robustness
+            break;
+            
+        case 1: // Move to clean station
+            {
+                Serial.println("CleaningState: Step 1 - Moving to clean station");
+                long cleaningX = 0.8 * STEPS_PER_INCH_XYZ;
+                long cleaningY = 4.1 * STEPS_PER_INCH_XYZ;
+                long cleaningZ = -3.0 * STEPS_PER_INCH_XYZ;
+                moveToXYZ(cleaningX, CLEANING_X_SPEED, cleaningY, CLEANING_Y_SPEED, cleaningZ, CLEANING_Z_SPEED);
+                atCleanPosition = true;
+                cleaningStep = 2;
+            }
+            break;
+            
+        case 2: // Hold paint gun while button is pressed
+            {
+                bool cleanupButtonPressed = (digitalRead(ACTION_BUTTON_CENTER) == HIGH);
+                
+                if (cleanupButtonPressed && !paintGunActive) {
+                    // Button pressed and paint gun not active - turn on paint gun
+                    Serial.println("CleaningState: Cleanup button pressed - activating paint gun");
+                    paintGun_ON();
+                    paintGunActive = true;
+                } else if (!cleanupButtonPressed && paintGunActive) {
+                    // Button released and paint gun active - turn off paint gun and start return sequence
+                    Serial.println("CleaningState: Cleanup button released - deactivating paint gun and returning home");
+                    paintGun_OFF();
+                    paintGunActive = false;
+                    cleaningStep = 3; // Move to return home step
+                } else if (!cleanupButtonPressed && !paintGunActive && shortMode) {
+                    // For short mode, run for the specified duration if button not held
+                    Serial.println("CleaningState: Short mode - running paint gun for specified duration");
+                    paintGun_ON();
+                    unsigned long paintGunOnDelay = SHORT_PAINT_GUN_ON_DELAY;
+                    delay(paintGunOnDelay);
+                    paintGun_OFF();
+                    cleaningStep = 3; // Move to return home step
+                }
+            }
+            break;
+            
+        case 3: // Return to home position
+            {
+                Serial.println("CleaningState: Step 3 - Returning to home position");
+                long cleaningX = 0.8 * STEPS_PER_INCH_XYZ;
+                long cleaningY = 4.1 * STEPS_PER_INCH_XYZ;
+                
+                // Retract the paint gun
+                moveToXYZ(cleaningX, CLEANING_X_SPEED, cleaningY, CLEANING_Y_SPEED, 0, CLEANING_Z_SPEED);
+                // Move back to home position
+                moveToXYZ(0, CLEANING_X_SPEED, 0, CLEANING_Y_SPEED, 0, CLEANING_Z_SPEED);
+                
+                Serial.println("Cleaning Cycle Complete.");
+                _cleaningComplete = true;
+                _isCleaning = false;
+                cleaningStep = 4; // Mark as complete
+            }
+            break;
+            
+        case 4: // Transition out of cleaning state
+            {
+                State* overrideState = nullptr;
+                if (stateMachine) { // Check stateMachine first
+                    overrideState = stateMachine->getNextStateOverrideAndClear();
+                }
+
+                if (overrideState) {
+                    Serial.println("CleaningState: Short clean complete. Transitioning to override state.");
+                    if(stateMachine) stateMachine->changeState(overrideState);
+                } else {
+                    Serial.println("CleaningState: Normal clean complete. Transitioning to Idle State.");
+                    if (stateMachine) {
+                         stateMachine->changeState(stateMachine->getIdleState());
+                    } else {
+                        Serial.println("ERROR: StateMachine pointer null. Cannot transition to Idle.");
+                    }
+                }
+                _cleaningComplete = false; // Reset for next entry
+            }
+            break;
     }
 }
 
 void CleaningState::exit() {
     Serial.println("Exiting Cleaning State");
-    // Ensure pressure pot is off when exiting, regardless of cycle completion state
+    // Ensure paint gun and pressure pot are off when exiting
+    if (paintGunActive) {
+        paintGun_OFF();
+        paintGunActive = false;
+    }
     PressurePot_OFF(); 
     _isCleaning = false; // Ensure flags are reset
     _cleaningComplete = false;
     shortMode = false; // Ensure mode is reset on any exit
+    cleaningStep = 0;
+    atCleanPosition = false;
 }
 
 const char* CleaningState::getName() const {
