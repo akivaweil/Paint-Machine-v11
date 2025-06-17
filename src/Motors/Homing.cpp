@@ -1,5 +1,6 @@
 #include "motors/Homing.h"
 #include "motors/XYZ_Movements.h"
+#include "motors/ServoMotor.h"
 #include <Arduino.h>
 #include <Bounce2.h>
 #include <FastAccelStepper.h>
@@ -48,6 +49,31 @@ bool Homing::homeAllAxes() {
     
     Serial.println("Homing: Allowing a brief moment for system to settle...");
     delay(250); // Brief pause for any transient noise from previous operations to settle
+    
+    //! ************************************************************************
+    //! SERVO INITIALIZATION SEQUENCE - BEFORE HOMING
+    //! ************************************************************************
+    Serial.println("Homing: Starting servo initialization sequence...");
+    
+    // Get reference to the global servo motor instance
+    extern ServoMotor myServo;
+    
+    // Move servo to 90 degrees
+    Serial.println("Homing: Moving servo to 90 degrees...");
+    myServo.setAngle(90.0f);
+    delay(1000); // Wait for servo to reach position
+    
+    // Move servo to 120 degrees
+    Serial.println("Homing: Moving servo to 120 degrees...");
+    myServo.setAngle(120.0f);
+    delay(1000); // Wait for servo to reach position
+    
+    // Move servo back to 90 degrees
+    Serial.println("Homing: Moving servo back to 90 degrees...");
+    myServo.setAngle(90.0f);
+    delay(1000); // Wait for servo to reach position
+    
+    Serial.println("Homing: Servo initialization sequence complete.");
     
     //! STEP 1: Initialize homing sequence
     Serial.println("Homing: Starting homing sequence proper...");
